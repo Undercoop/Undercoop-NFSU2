@@ -1,0 +1,23 @@
+Undercoop Binary data engine 1 (6.12.16)
+
+Typed data conversion only. No Binary GUI, Endscript executor, LZCompressLib,
+archive-supplied executable or third-party installer is loaded by this engine.
+
+Nikki: Copyright (c) 2020 MaxHwoy, MIT.
+https://github.com/SpeedReflect/Nikki
+Revision b2468b7e4f1ac1efdb29a0c57380dbc90ed1afe7
+CoreExtensions: MIT, MaxHwoy.
+Revision 1e1e68719652ae81e0726b877820df5e137a9ac7
+Both license texts are distributed beside their source-built libraries.
+Unrelated legacy ASMBuilder is omitted from this private data-only build.
+Nikki's native Interop is replaced by Undercoop's bounded RAWW/JDLZ adapter.
+Four Underground2 car-part assembler classes have local MIT-source overrides
+under nikki_safe/: exact structural/ordinal keys replace hash-code-only
+deduplication, with explicit native table index limits. SDK source provenance
+is retained above; these are modified source-built classes, not upstream DLLs.
+Nikki's database APIs do not execute installation scripts; Undercoop translates
+supported VERSN1/VERSN2 data operations and verifies unchanged collections.
+
+The optional private Microsoft .NET runtime remains governed by its bundled
+LICENSE.txt and ThirdPartyNotices.txt. Its official archive SHA-512 and file
+manifest are verified before use; no registry/system installer is run.

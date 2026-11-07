@@ -1,0 +1,24 @@
+Undercoop additional permission for 7-Zip
+
+Copyright (C) 2026 batuhan.
+
+Under GNU GPL version 3 section 7, the copyright holder of the original
+Undercoop code grants the following additional permission.
+
+You may combine the GPL-covered Undercoop code with the separately loaded
+7-Zip archive decoder distributed with this release, including its code
+subject to GNU LGPL 2.1-or-later, the accompanying BSD terms and the unRAR
+restriction, and convey the resulting combination.
+
+This permission also covers modified versions of that decoder distributed
+under the same applicable component terms. When conveying the combination,
+comply with GPLv3 for Undercoop and retain and comply with the decoder's
+licenses and notices. Supply the decoder's corresponding source, including
+changes and build information, as required by those component terms.
+
+This permission applies only to the 7-Zip decoder combination. It grants
+no exception for unrelated nonfree plugins, fonts, assets or libraries.
+It does not change the licenses of any third-party component.
+
+Recipients may remove this additional permission from their copies under
+GPLv3 section 7. Recipients who retain it must include this notice.

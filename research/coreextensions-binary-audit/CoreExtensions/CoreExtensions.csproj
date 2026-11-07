@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <PackageId>CoreExtensionsAPI</PackageId>
+    <Version>1.1.5</Version>
+    <Authors>MaxHwoy</Authors>
+    <Company>MaxHwoy</Company>
+    <Description>Library of useful extensions for System classes.</Description>
+    <Copyright>Copyright © 2020 MaxHwoy</Copyright>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/MaxHwoy/CoreExtensions</RepositoryUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageTags>CoreExtensions, CoreExtensionsAPI, Core, Extensions, API, System, Reflection, IO, Text, Cast</PackageTags>
+    <PackageIcon>Extensions.png</PackageIcon>
+    <PackageIconUrl />
+    <RepositoryType>Software Repository</RepositoryType>
+    <PackageReleaseNotes>Provides extensions to System, System.IO, System.Reflection, System.Text, and soon many others will be added as well.</PackageReleaseNotes>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DocumentationFile>CoreExtensions.xml</DocumentationFile>
+    <PlatformTarget>x86</PlatformTarget>
+    <NoWarn>1701;1702;1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DocumentationFile>CoreExtensions.xml</DocumentationFile>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE.md">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>

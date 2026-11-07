@@ -1,0 +1,1 @@
+{"runtimeOptions":{"tfm":"net8.0","framework":{"name":"Microsoft.NETCore.App","version":"8.0.0"},"rollForward":"LatestPatch","configProperties":{"System.GC.HeapHardLimit":536870912,"System.Globalization.Invariant":true}}}

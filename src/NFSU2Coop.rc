@@ -1,0 +1,38 @@
+// Copyright (C) 2026 batuhan.
+// This file is part of Undercoop: NFSU2.
+// Licensed under GNU GPL version 3 only. See COPYING and LICENSE.md.
+// Additional 7-Zip permission is in LICENSE-7ZIP-EXCEPTION.txt.
+
+301 RCDATA "assets/launcher/brand.png"
+302 RCDATA "assets/launcher/fonts/chakrapetch/ChakraPetch-Bold.ttf"
+330 RCDATA "third_party/enet/LICENSE"
+#if defined(UNDERCOOP_MOD_MANAGER) || defined(UNDERCOOP_MANAGER_UI_TEST)
+311 RCDATA "assets/launcher/fonts/barlow/Barlow-Regular.ttf"
+312 RCDATA "assets/launcher/fonts/barlow/Barlow-Bold.ttf"
+313 RCDATA "assets/launcher/fonts/barlow/Barlow-Italic.ttf"
+314 RCDATA "assets/launcher/fonts/barlow/Barlow-BoldItalic.ttf"
+315 RCDATA "assets/launcher/brand.png"
+316 RCDATA "third_party/miniz/LICENSE"
+317 RCDATA "third_party/7zip/CPP/7zip/Bundles/Format7zF/x86/7z.dll"
+318 RCDATA "third_party/7zip/DOC/License.txt"
+319 RCDATA "third_party/7zip/DOC/copying.txt"
+320 RCDATA "../research/undercoop-7zip2605-src.tar.xz"
+321 RCDATA "assets/ArchiveEngineSource.txt"
+322 RCDATA "binary_engine/build/Undercoop.Binary.dll"
+323 RCDATA "binary_engine/build/Nikki.dll"
+324 RCDATA "binary_engine/build/CoreExtensions.dll"
+325 RCDATA "binary_engine/Undercoop.Binary.runtimeconfig.json"
+326 RCDATA "../research/nikki-binary-audit/LICENSE"
+327 RCDATA "../research/coreextensions-binary-audit/LICENSE.md"
+328 RCDATA "binary_engine/NOTICE.txt"
+329 RCDATA "binary_engine/runtime-manifest.txt"
+#endif
+
+// Public font and Undercoop license notices travel with the compiled resource.
+331 RCDATA "assets/launcher/fonts/barlow/OFL.txt"
+332 RCDATA "assets/launcher/fonts/chakrapetch/OFL.txt"
+333 RCDATA "../COPYING"
+334 RCDATA "../LICENSE.md"
+335 RCDATA "../LICENSE-7ZIP-EXCEPTION.txt"
+336 RCDATA "../THIRD_PARTY_NOTICES.md"
+337 RCDATA "../TRADEMARKS.md"

@@ -1,0 +1,33 @@
+Undercoop archive decoder26.05 modifications (2026-10-23)
+
+The upstream7zip source/license files are retained. Undercoop additions in
+C/UndercoopBudget.c, C/UndercoopBudget.h and CPP/Common/UndercoopBudgetCpp.cpp
+are licensed LGPL-2.1-or-later and distributed as source with this decoder.
+
+Only the Format7zF DLL build defines UNDERCOOP_ARCHIVE_BUDGET. Under that macro:
+- C/Alloc.c routes MyAlloc/MyRealloc/MyFree, MidAlloc/MidFree and BigAlloc/Free
+  into a DLL-local, atomically accounted allocation guard.
+- C++new/new[], nothrow and sized-delete variants use the same allocator.
+  Aligned-new/delete variants are supplied when the compiler enables them.
+- Maximum requested allocation is128MiB. Maximum live payload plus prefixed
+  headers/alignment charges is256MiB across all decoder-owned guarded blocks.
+- Regular blocks are at least16-byte aligned; Mid/Big blocks remain page
+  aligned. Reallocation failure preserves the original block and contents.
+- Rejection occurs before calling HeapAlloc, including decoder dictionaries,
+  encoded-header buffers and C++container allocations. No process allocator
+  hooks, security exclusions, changes to the game heap or Windows runtime
+  allocator replacement are used.
+- Native COM/BSTR interfaces retain the system's own allocation conventions;
+  caller-owned BSTRs/callbacks are not passed to the guarded block free routine.
+
+Format7zF/makefile adds the two allocation guard objects and uses its own
+UndercoopArchive.def to retain normal7zip exports and add private diagnostic
+exports. Other upstream bundle/export files are not changed by this override.
+scratch/BuildArchiveEngine61215.bat forces a complete rebuild, preventing a
+mixture of stale unguarded and newly guarded object files.
+
+Verification:523 archive-format/safety checks plus291 direct/parallel allocator
+checks pass. The latter reject1GiB ordinary/C++allocations and two real malicious
+dictionary headers (standaloneLZMA and an encoded7z header), enforce aggregate
+limits and verify live allocation/free counters return to their baseline after
+ordinary7z/ZIP64/tgz/txz/RAR4/RAR5solid decoding as well as failed decodes.

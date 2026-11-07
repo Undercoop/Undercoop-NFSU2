@@ -1,0 +1,34 @@
+Undercoop archive support includes a separately built 7-Zip 26.05 decoder DLL.
+Copyright (C) 1999-2026 Igor Pavlov. https://www.7-zip.org/
+
+7-Zip is licensed under GNU LGPL 2.1-or-later, with BSD notices and the unRAR
+restriction for the RAR decompression code. See License.txt and Copying.txt.
+RAR creation/reimplementation is not provided by Undercoop.
+
+The complete corresponding source, including the clearly marked Undercoop
+allocation-budget changes, is supplied alongside this notice:
+undercoop-7zip2605-src.tar.xz. It is derived from the official release:
+https://github.com/ip7z/7zip/releases/tag/26.05
+Upstream source SHA-256: 0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e
+
+The separate DLL is built from CPP/7zip/Bundles/Format7zF using the official
+makefile and the Windows x86 Visual C++ toolchain (nmake /A PLATFORM=x86).
+It uses the static C runtime and needs no installed 7-Zip application.
+Undercoop modifications bound decoder C/C++ allocations before parsing headers
+and dictionary streams: 128 MiB per allocation and 256 MiB aggregate, aligned
+and owned exclusively by this DLL. See UNDERCOOP-MODIFICATIONS.txt and the
+marked sources, licensed under LGPL-2.1-or-later. They do not hook the game or
+the process-wide CRT allocator.
+The decoder is an ordinary separate DLL, not statically linked into Undercoop.
+
+To rebuild/replace the decoder for your own copy, unpack the corresponding
+source, open an x86 Visual Studio tools prompt, enter the Format7zF directory
+and run nmake /A PLATFORM=x86. The Undercoop source/resources and build scripts
+allow rebuilding its embedded decoder resource with your replacement DLL.
+Undercoop verifies the on-disk decoder against its own embedded resource;
+unknown on-disk replacements are never loaded silently.
+
+Only the mod-import operation uses this engine. The engine, licenses and source
+remain in mods/_undercoop/archive-engine/26.05, outside the original game assets.
+No installer, archive executable, shell command or downloaded mod DLL is run
+by the extraction step. Native mod approval remains a separate launch action.

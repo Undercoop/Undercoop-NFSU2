@@ -1,0 +1,49 @@
+{
+  "repository": "https://github.com/google/fonts",
+  "revision": "86aced91de05cd4f96a06838124cca45be337b2b",
+  "license": "SIL Open Font License 1.1",
+  "files": [
+    {
+      "path": "barlow/Barlow-Regular.ttf",
+      "sha256": "95aa02c7c43096e0dd44d787ba6216864a67157e402adab59b35572e0c1577ea",
+      "bytes": 104068,
+      "source": "https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/barlow/Barlow-Regular.ttf"
+    },
+    {
+      "path": "barlow/Barlow-Bold.ttf",
+      "sha256": "84e6a4d61e7c3e21f3c50ea6a4f7e5303a3467864c038be6ea3759bab8d547f9",
+      "bytes": 108220,
+      "source": "https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/barlow/Barlow-Bold.ttf"
+    },
+    {
+      "path": "barlow/Barlow-Italic.ttf",
+      "sha256": "70cf45c354af39e55082fd506e748cc6a0a1812949875f99ded3f76bf691e4ca",
+      "bytes": 109624,
+      "source": "https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/barlow/Barlow-Italic.ttf"
+    },
+    {
+      "path": "barlow/Barlow-BoldItalic.ttf",
+      "sha256": "079dcee4a53544177f3b16354b27b40b521e22861a40084ab4d052f0289ed9e8",
+      "bytes": 111996,
+      "source": "https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/barlow/Barlow-BoldItalic.ttf"
+    },
+    {
+      "path": "barlow/OFL.txt",
+      "sha256": "186d750eb496a4c17a76385f82be6aea2ac1cf2de074a811d63786cf374ea73f",
+      "bytes": 4377,
+      "source": "https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/barlow/OFL.txt"
+    },
+    {
+      "path": "chakrapetch/ChakraPetch-Bold.ttf",
+      "sha256": "65fbf76d95651697275e19db4d717c0e95a789ddd3476478b05292104db278a0",
+      "bytes": 78384,
+      "source": "https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/chakrapetch/ChakraPetch-Bold.ttf"
+    },
+    {
+      "path": "chakrapetch/OFL.txt",
+      "sha256": "13831d02389d917d22fcfa6c79f98f8acbf61d230add0e73a4d4dc5f3bfb9e56",
+      "bytes": 4396,
+      "source": "https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/chakrapetch/OFL.txt"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Preserve the verified public snapshot bytes and SOURCE-MANIFEST hashes.
+# In particular, do not rewrite Windows resource/build files during checkout.
+* -text
+*.png binary
+*.ttf binary
+*.otf binary
+*.dll binary
+*.xz binary

@@ -1,0 +1,3 @@
+[submodule "Modules/CoreExtensions"]
+	path = Modules/CoreExtensions
+	url = https://github.com/MaxHwoy/CoreExtensions

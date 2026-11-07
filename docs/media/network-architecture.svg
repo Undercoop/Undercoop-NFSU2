@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="640" viewBox="0 0 1080 640" role="img" aria-labelledby="title desc">
+<title id="title">Undercoop network architecture</title><desc id="desc">Host and Client communicate through raw UDP discovery and connected ENet channels. Each human is locally driven; the Host owns managed AI and traffic. Shared operations use identities, acknowledgements and game-thread adapters.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a8b5c5"/></marker></defs>
+<rect x="0.5" y="0.5" width="1079" height="639" rx="18" fill="#101215" stroke="#2c3239"/>
+<text x="32" y="42" font-family="Segoe UI,Arial,sans-serif" font-size="14" fill="#a4aeb9" font-weight="600">ONE GAMEPLAY TRANSPORT ACROSS LOCAL / LAN / VPN</text>
+<text x="32" y="81" font-family="Segoe UI,Arial,sans-serif" font-size="29" fill="#f2f4f7" font-weight="700">Explicit ownership. Acknowledged transitions.</text>
+<rect x="32" y="112" width="304" height="310" rx="14" fill="#191d23" stroke="#323941"/>
+<text x="52" y="145" font-family="Segoe UI,Arial,sans-serif" font-size="21" fill="#f2f4f7" font-weight="700">PLAYER 1 / HOST</text>
+<text x="52" y="173" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="400">Game process A</text>
+<rect x="48" y="194" width="272" height="66" rx="14" fill="#21262e" stroke="#323941"/>
+<text x="62" y="221" font-family="Segoe UI,Arial,sans-serif" font-size="18" fill="#edf1f5" font-weight="600">Own human car</text>
+<text x="62" y="246" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="400">Local control</text>
+<rect x="48" y="272" width="272" height="77" rx="14" fill="#21262e" stroke="#323941"/>
+<text x="62" y="301" font-family="Segoe UI,Arial,sans-serif" font-size="18" fill="#edf1f5" font-weight="600">Managed AI / traffic</text>
+<text x="62" y="327" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="400">Authoritative simulation</text>
+<text x="52" y="389" font-family="Segoe UI,Arial,sans-serif" font-size="16" fill="#d7b878" font-weight="600">Native game-thread adapters</text>
+<rect x="744" y="112" width="304" height="310" rx="14" fill="#191d23" stroke="#323941"/>
+<text x="764" y="145" font-family="Segoe UI,Arial,sans-serif" font-size="21" fill="#f2f4f7" font-weight="700">PLAYER 2 / CLIENT</text>
+<text x="764" y="173" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="400">Game process B</text>
+<rect x="760" y="194" width="272" height="66" rx="14" fill="#21262e" stroke="#323941"/>
+<text x="774" y="221" font-family="Segoe UI,Arial,sans-serif" font-size="18" fill="#edf1f5" font-weight="600">Own human car</text>
+<text x="774" y="246" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="400">Local control</text>
+<rect x="760" y="272" width="272" height="77" rx="14" fill="#21262e" stroke="#323941"/>
+<text x="774" y="301" font-family="Segoe UI,Arial,sans-serif" font-size="18" fill="#edf1f5" font-weight="600">Remote vehicles</text>
+<text x="774" y="327" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="400">Validated snapshot replicas</text>
+<text x="764" y="389" font-family="Segoe UI,Arial,sans-serif" font-size="16" fill="#d7b878" font-weight="600">Native game-thread adapters</text>
+<rect x="370" y="112" width="340" height="310" rx="14" fill="#171e27" stroke="#465364"/>
+<text x="392" y="146" font-family="Segoe UI,Arial,sans-serif" font-size="23" fill="#f2f4f7" font-weight="700">UDP + ENet 1.3.18</text>
+<text x="392" y="175" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="400">Discovery / membership: base port</text>
+<text x="392" y="200" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="400">Connected gameplay: base + 1000</text>
+<rect x="387" y="219" width="306" height="53" rx="8" fill="#242d39" stroke="#374454"/>
+<text x="399" y="240" font-family="Segoe UI,Arial,sans-serif" font-size="14" fill="#f0f3f7" font-weight="700">RELIABLE CONTROL</text>
+<text x="399" y="262" font-family="Segoe UI,Arial,sans-serif" font-size="14" fill="#aeb8c4" font-weight="400">Shared operations</text>
+<rect x="387" y="281" width="306" height="53" rx="8" fill="#242d39" stroke="#374454"/>
+<text x="399" y="302" font-family="Segoe UI,Arial,sans-serif" font-size="14" fill="#f0f3f7" font-weight="700">LATEST ENTITY STATE</text>
+<text x="399" y="324" font-family="Segoe UI,Arial,sans-serif" font-size="14" fill="#aeb8c4" font-weight="400">Replaceable motion samples</text>
+<rect x="387" y="343" width="306" height="53" rx="8" fill="#242d39" stroke="#374454"/>
+<text x="399" y="364" font-family="Segoe UI,Arial,sans-serif" font-size="14" fill="#f0f3f7" font-weight="700">RELIABLE BULK</text>
+<text x="399" y="386" font-family="Segoe UI,Arial,sans-serif" font-size="14" fill="#aeb8c4" font-weight="400">Fragmented data / 1200-byte MTU</text>
+<path d="M340,263 H364" stroke="#a8b5c5" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<path d="M716,263 H738" stroke="#a8b5c5" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<rect x="32" y="448" width="1016" height="76" rx="14" fill="#1b2027" stroke="#323941"/>
+<text x="52" y="477" font-family="Segoe UI,Arial,sans-serif" font-size="16" fill="#d7b878" font-weight="700">SESSION → CAREER → RACE / OPERATION</text>
+<text x="52" y="504" font-family="Segoe UI,Arial,sans-serif" font-size="18" fill="#edf1f5" font-weight="400">Generation checks + bounded value copies + receive / acknowledge / commit</text>
+<rect x="32" y="542" width="1016" height="69" rx="14" fill="#15191f" stroke="#323941"/>
+<text x="52" y="571" font-family="Segoe UI,Arial,sans-serif" font-size="15" fill="#aeb8c4" font-weight="700">SENDING IS NOT COMMITTING</text>
+<text x="52" y="596" font-family="Segoe UI,Arial,sans-serif" font-size="16" fill="#aeb8c4" font-weight="400">No shared PC clock assumption. No deterministic physics or encrypted public-server claim.</text>
+</svg>
