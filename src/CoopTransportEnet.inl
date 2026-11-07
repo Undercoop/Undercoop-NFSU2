@@ -54,6 +54,7 @@ inline void Transport::Impl::CloseLocked() {
     reliableInFlightBytes_ = 0;
     session_ = 0; nonce_ = 0; peer_ = {}; localBasePort_ = 0;
     connected_ = peerHello_ = helloAcknowledged_ = false;
+    lastRttAckStamp_ = 0; stats_.rttMeasured = false; stats_.rttSampleAtMs = 0;
     stats_.open = false;
 }
 
@@ -67,6 +68,7 @@ inline void Transport::Impl::ClearPeerLocked() {
     RetireQueuesLocked();
     reliableInFlightBytes_ = 0;
     connected_ = peerHello_ = helloAcknowledged_ = false;
+    lastRttAckStamp_ = 0; stats_.rttMeasured = false; stats_.rttSampleAtMs = 0;
 }
 
 inline void Transport::Impl::RetireQueuesLocked() {
@@ -287,6 +289,12 @@ inline void Transport::Impl::Poll(std::uint32_t now) {
     DrainLocked(now);
     enet_host_flush(socket_);
     CollectSocketCountersLocked();
+    // In bundled ENet, lastReceiveTime is updated by the ACK handler after
+    // calculating RTT. Convert that changing stamp to our local Poll clock.
+    if (link_ && connected_ && link_->lastReceiveTime && link_->lastReceiveTime != lastRttAckStamp_) {
+        lastRttAckStamp_ = link_->lastReceiveTime;
+        stats_.rttMeasured = true; stats_.rttSampleAtMs = now;
+    }
 }
 
 inline int Transport::Impl::Receive(void* data, std::size_t capacity, coop::Endpoint& canonicalSender) {

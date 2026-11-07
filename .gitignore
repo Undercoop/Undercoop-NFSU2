@@ -46,6 +46,7 @@ filelist.txt
 backups/
 
 # Build artifacts
+output/
 *.obj
 *.lib
 *.exp

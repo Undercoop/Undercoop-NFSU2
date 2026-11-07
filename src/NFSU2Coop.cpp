@@ -28,6 +28,7 @@
 #include "CoopSession.h"
 #include "CoopNetworkGeneration.h"
 #include "CoopNetworkHealth.h"
+#include "CoopPeerPartVisibility.h"
 #include "CoopTime.h"
 #include "CoopMotionClock.h"
 #include "CoopTransport.h"
@@ -60,6 +61,7 @@
 #include "CoopTrafficRuntime.inl"
 #include "CoopStartupIntro.inl"
 #include "CoopAnnouncements.inl"
+#include "CoopConnectionHudOverlay.inl"
 #include "CoopDiscordPublicConfig.h"
 #ifdef UNDERCOOP_MOD_MANAGER
 #include "CoopModManagerWin.h"
@@ -3181,6 +3183,13 @@ void __cdecl UiTick() {
     struct NoticeTick { ~NoticeTick() {const bool focused=IsGameWindowFocused();
         { CoopPerf::Scope perf(CoopPerf::Part::PeerLabel); CoopPeerLabelNative::Tick(gGameHwnd,focused); }
         { CoopPerf::Scope perf(CoopPerf::Part::Announcements); CoopAnnouncements::Tick(gGameHwnd,focused); }
+        const auto now=GetTickCount();
+        if(CoopConnectionHud::NeedsUpdate(now)){
+            const auto session=CoopSnapshot();
+            CoopConnectionHud::Update(session,gCoopTransport.Snapshot(),
+                CoopConnectedTransportReady(session),IsCoopGameplayActive(),now);
+        }
+        CoopConnectionHud::Tick(gGameHwnd,focused);
     } } noticeTick;
     BindCoopConsoleForUi(CoopSnapshot());
     TickCoopChatUi();
@@ -4267,10 +4276,11 @@ void __cdecl SetupCoopCar1BeforeRaceLoading() {
                 ++unresolvedCount;
             }
         }
-        // Recompute dependent body/widebody parts and visibility flags BEFORE
-        // native CarLoader requests geometry and textures. Never mutate parts
-        // from a rendering (or collision) callback.
-        pSetupParts(pRide1);
+        // Recompute dependent parts before streaming, then restore the owner's
+        // finalized installed/visibility values. Native defaults can otherwise
+        // hide upgraded rim/spoiler meshes despite successful part resolution.
+        coop_peer_parts::NormalizeFinalized(pRide1, srcRide,
+            [&](uint8_t* localRide) { pSetupParts(localRide); });
     }
     // Native 0x5F02B0 passes VehicleParam.PlayerIndex + 1 to 0x61C280.
     // Slot 1 is LOCAL DUMMY_SKIN1, not the partner: sharing it makes the peer
@@ -4707,7 +4717,9 @@ void TickPeerAppearanceRefresh(DWORD flowState) {
             ++resolved;
         } else ++missing;
     }
-    reinterpret_cast<void(__thiscall*)(void*)>(0x0061BCD0)(staged);
+    coop_peer_parts::NormalizeFinalized(staged, src, [](uint8_t* localRide) {
+        reinterpret_cast<void(__thiscall*)(void*)>(0x0061BCD0)(localRide);
+    });
     reinterpret_cast<void(__thiscall*)(void*, int)>(0x0061C280)(staged, TextureSlotForPlayerIndex(kPeerRenderPlayerIndex));
     // Existing resident resources own their own references. This request owns
     // exactly one additional lease, retained only until replaced or race exit.
@@ -9431,6 +9443,7 @@ static void StartCoopObserver(HMODULE module){
         StartCoopCrashReporter(module);
         CoopStartupIntro::Initialize(module);
         CoopAnnouncements::Initialize(module);
+        CoopConnectionHud::Initialize(module);
         CoopPeerLabelOverlay::Initialize(module);
 
         SetErrorMode(GetErrorMode() | SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);

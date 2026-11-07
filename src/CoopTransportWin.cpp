@@ -78,6 +78,7 @@ struct Transport::Impl {
     std::uint64_t session_ = 0;
     std::uint64_t generation_ = 0;
     std::uint32_t nonce_ = 0, lastConnect_ = 0;
+    std::uint32_t lastRttAckStamp_ = 0;
     coop::Endpoint peer_{};
     std::size_t reliableInFlightBytes_ = 0;
     std::deque<Message> controls_, bulk_, incoming_;

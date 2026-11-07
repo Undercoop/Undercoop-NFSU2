@@ -172,6 +172,15 @@ public:
         target->DrawTextLayout(D2D1::Point2F(x,y),layout.Get(),brush.Get(),D2D1_DRAW_TEXT_OPTIONS_CLIP);
         target->PopAxisAlignedClip();
     }
+    void ColoredText(const wchar_t* text,float x,float y,float width,float height,unsigned rgb) {
+        auto layout=Layout(text,width,height,0,false);if(!layout)return;
+        layout->SetFontSize(14,{0,UINT32(std::wcslen(text))});
+        brush->SetColor(D2D1::ColorF(0.015f,0.02f,0.025f,0.95f));
+        for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)if(dx||dy)
+            target->DrawTextLayout(D2D1::Point2F(x+dx,y+dy),layout.Get(),brush.Get());
+        brush->SetColor(D2D1::ColorF(rgb,1.0f));
+        target->DrawTextLayout(D2D1::Point2F(x,y),layout.Get(),brush.Get());
+    }
 };
 // Only our two owned top-level overlays are per-monitor aware. The game's
 // thread context is restored before returning, including every failure path.

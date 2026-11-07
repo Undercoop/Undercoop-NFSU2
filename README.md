@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Open Beta" src="https://img.shields.io/badge/OPEN_BETA-6.13.26-d7b878?style=flat-square&amp;labelColor=16191d">
+  <img alt="Open Beta" src="https://img.shields.io/badge/OPEN_BETA-6.13.27-d7b878?style=flat-square&amp;labelColor=16191d">
   <img alt="Windows x86" src="https://img.shields.io/badge/PLATFORM-Windows_x86-c8d1dc?style=flat-square&amp;labelColor=16191d">
   <img alt="Two-player co-op" src="https://img.shields.io/badge/PLAYERS-2-c8d1dc?style=flat-square&amp;labelColor=16191d">
   <img alt="GPLv3 with 7-Zip permission" src="https://img.shields.io/badge/LICENSE-GPLv3_%2B_7--Zip_permission-c8d1dc?style=flat-square&amp;labelColor=16191d">
@@ -21,7 +21,7 @@
   <a href="https://developer.undercoop.dev/status"><img alt="Undercoop Status" src="https://img.shields.io/badge/Undercoop-Status-292c33?style=for-the-badge"></a>
 </p>
 
-> **Open Beta · 6.13.26**
+> **Open Beta · 6.13.27**
 >
 > Undercoop is in active development. The systems below are implemented, but unusual race transitions, mod combinations and remote sessions can still expose bugs. Keep your own save copies, use the same Undercoop build on both PCs, and report problems with both players' logs. This repository contains the mod and launcher source, not the original game.
 
@@ -32,6 +32,14 @@
 **Made by batuhan.** Undercoop brings a shared campaign to a game built around a single local player: career decisions, race transitions, AI, traffic, discoveries, cutscenes and save handling each need explicit co-op integration. Its native launcher also provides a place to manage mods, dependencies, settings and careers before the game starts.
 
 **Explore the project:** [Co-op features](#co-op-features) · [Mod manager](#the-integrated-mod-manager) · [Getting started](#getting-started) · [Network architecture](#network-architecture) · [Build from source](#build-from-source) · [Bug reports](#reporting-a-problem) · [Licensing](#licensing-and-branding)
+
+### Latest patch · 6.13.27
+
+- Preserve finalized teammate part visibility after native RideInfo normalization, so installed rims, spoilers and other upgraded meshes keep their intended visibility on both screens.
+- Add a persistent connection HUD with live measured ping and green/orange/red connection quality, including explicit measuring, interrupted and disconnected states.
+- Keep existing careers, imported saves, mod selections and connection settings unchanged during deployment.
+
+See [the patch notes and test checklist](docs/PATCH_6.13.27.md).
 
 ## Co-op features
 
@@ -47,6 +55,7 @@
 | **Special Events** | Photo opportunities, magazine/DVD cover flows, timed destination drives and unique-part events have dedicated co-op handling. Both players must be inside the real starting area. For timed drives, both must arrive; one timeout fails the team. |
 | **Local menus** | Ordinary pause menus are local. They do not pause the shared world or stop AI for the other driver. Restart/leave consent and movie-skip voting remain separate actions. |
 | **Chat and console** | Player chat and system notices have separate channels. Invitations use dedicated accept/decline keys instead of competing with native Enter/Escape actions. |
+| **Connection HUD** | A small persistent indicator shows live measured ping and connection state. Quality is green/orange/red; an unmeasured or interrupted link is not displayed as a healthy zero-millisecond connection. |
 
 ### Race-mode integration
 
@@ -79,7 +88,7 @@ The launcher is hosted by `NFSU2Coop.asi` and opens when the game starts through
   <img src="docs/media/launcher-mods.png" width="1040" alt="Installed mod packages in the Undercoop launcher">
 </p>
 
-*Screenshots are launcher previews rendered from this public source build. Example package names and careers illustrate the interface; third-party mods and their game assets are not bundled here.*
+*Screenshots show the public-font launcher. Example package names and careers illustrate the interface; third-party mods and their game assets are not bundled here.*
 
 ### Archive and installer support
 
@@ -263,7 +272,13 @@ The source snapshot includes the required decoder/data-library binaries together
 
 ### Verification scope
 
-This public snapshot has passed a clean **x86 source build** and **73 launcher/font rendering checks**. It also includes standalone session, profile and checkpoint test sources under `src`. Broader development fixtures are not all part of this export.
+This public snapshot has passed a clean **x86 source build**, finalized-part visibility regressions, real ENet loopback RTT/reconnect tests, and connection-HUD state/color/DPI tests. Run the patch's included checks after building:
+
+```bat
+tests\Run-Tests.cmd
+```
+
+The source also includes standalone session, profile and checkpoint tests under `src`. Broader development fixtures are not all part of this export.
 
 Automated protocol tests and native-memory fixtures are useful evidence; they do not replace two-computer gameplay validation. Test local and real remote sessions, including both finish orders, DNFs, results-screen restarts, career switches, reconnects, sponsor choices and timed Special Events. A custom crash dialog cannot handle every OS termination or catastrophic process failure.
 

@@ -33,6 +33,10 @@ struct Statistics {
     std::size_t queuedControl = 0, queuedState = 0, queuedBulk = 0, queuedReceive = 0;
     std::size_t reliableInFlightBytes = 0;
     std::uint32_t rttMs = 0, rttVarianceMs = 0, lossPartsPerMillion = 0;
+    // Local diagnostics only; never serialized. ENet's initial500ms value is
+    // not a measurement. Sample time is in the caller's Poll clock domain.
+    std::uint32_t rttSampleAtMs = 0;
+    bool rttMeasured = false;
     std::uint64_t generation = 0;
     bool open = false, connected = false, ready = false;
 };
