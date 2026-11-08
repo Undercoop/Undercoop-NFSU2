@@ -31,7 +31,7 @@
 
 **Made by batuhan.** Undercoop brings a shared campaign to a game built around a single local player: career decisions, race transitions, AI, traffic, discoveries, cutscenes and save handling each need explicit co-op integration. Its native launcher also provides a place to manage mods, dependencies, settings and careers before the game starts.
 
-**Explore the project:** [Co-op features](#co-op-features) · [Mod manager](#the-integrated-mod-manager) · [Getting started](#getting-started) · [Network architecture](#network-architecture) · [Build from source](#build-from-source) · [Bug reports](#reporting-a-problem) · [Licensing](#licensing-and-branding)
+**Explore the project:** [Co-op features](#co-op-features) · [Mod manager](#the-integrated-mod-manager) · [VirusTotal / antivirus](#virustotal-and-antivirus-alerts) · [Getting started](#getting-started) · [Network architecture](#network-architecture) · [Build from source](#build-from-source) · [Bug reports](#reporting-a-problem) · [Licensing](#licensing-and-branding)
 
 ### Latest patch · 6.13.28
 
@@ -122,6 +122,41 @@ The Binary worker uses source-built **Nikki** and **CoreExtensions**, with bound
 - **Resume:** the last successfully loaded career is remembered. The INI's `Profile` value is an initial Host preference, not a command to keep replacing the active career.
 
 Backups reduce recovery risk; keep an external copy before experimenting with unfamiliar mods or save conversions.
+
+## VirusTotal and antivirus alerts
+
+**Maintainer assessment: the reported detections on the reviewed 6.13.28 binary are likely false positives.** This assessment is based on a focused source review and verification of its embedded mod-installation helper. The detecting vendors have not confirmed this assessment.
+
+**[View the VirusTotal report for the reviewed ASI](https://www.virustotal.com/gui/file/2ab74b2d32ea4fdffe29834dd022a3d8537df3bc7883f8f6ee7f016dfbec1de9/detection)**
+
+The report supplied for review showed two detections: SecureAge **`Malicious`** and Skyhigh (SWG) **`BehavesLike.Win32.Dropper.vm`**. Its **Relations** view also showed two detections for the embedded `Undercoop.Binary.dll`. Detection counts can change after rescanning.
+
+### Why a mod manager can resemble a dropper
+
+Undercoop installs hooks inside the running game and changes code-page permissions to integrate co-op with the original engine. Its launcher also extracts bundled helper libraries and starts the Binary data-conversion worker through the .NET runtime. The reviewed ASI is unsigned. These are plausible heuristic triggers; the antivirus vendors have not disclosed which rules matched this file.
+
+`Undercoop.Binary.dll` prepares supported Binary-based mod data inside a bounded `job-*` workspace. Our focused review found no networking, child-process launch, startup persistence or antivirus-disabling calls in that worker's own source. Unsupported installer operations are rejected. The embedded worker was verified byte-for-byte against the locally built helper:
+
+| Reviewed artifact | SHA-256 |
+| --- | --- |
+| `NFSU2Coop.asi` — 6.13.28 sample | `2ab74b2d32ea4fdffe29834dd022a3d8537df3bc7883f8f6ee7f016dfbec1de9` |
+| Embedded `Undercoop.Binary.dll` | `33aa6615168d5b5bca38d1cabb7d4c1ad35c2c8856e4566b1842454929a3e303` |
+
+The helper is intentionally compiled as an x86 .NET application named `.dll`, so VirusTotal's **Win32 EXE** classification is consistent with its build configuration. Framework-dependent .NET applications can run through `dotnet application.dll`. See [the worker source](src/binary_engine/Program.cs), [its build script](scratch/BuildBinaryEngine61216.ps1), [the launcher adapter](src/CoopBinaryEngineWin.inl) and [Microsoft's documentation](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet).
+
+VirusTotal's **PE Resource Children** list identifies files embedded as resources. That relationship alone does not establish execution or malicious behavior. See [VirusTotal's definition](https://docs.virustotal.com/reference/file-object-pe-resource-children).
+
+### What this review establishes
+
+The reviewed worker code paths are consistent with an offline game-data converter. The low detection count and clean results for other components support further investigation; they do not establish safety on their own. This was a focused static review, with no complete sandbox behavior report or independent vendor clearance. Third-party native mods still require their own review.
+
+This report applies to the exact ASI hash above. Other releases and local builds, including builds using this repository's public-font assets, need their own scan. You can check your file with:
+
+```powershell
+Get-FileHash .\scripts\NFSU2Coop.asi -Algorithm SHA256
+```
+
+If an antivirus flags your copy, include its detection name, the file hash and the report link in a [GitHub issue](https://github.com/Undercoop/Undercoop-NFSU2/issues). We support submitting suspected false positives to the detecting vendors for review; do not disable protection to resolve an alert. [VirusTotal explains that review process here](https://docs.virustotal.com/docs/false-positive).
 
 ## Getting started
 
