@@ -46,6 +46,29 @@ int main(){
         }
         SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);
     }
+    for(const int dpi:{96,144,192})for(const int logicalWidth:{216,360}){
+        const int width=MulDiv(logicalWidth,dpi,96),height=MulDiv(48,dpi,96);
+        BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;
+        info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;
+        HDC dc=CreateCompatibleDC(nullptr);BYTE* pixels=nullptr;
+        HBITMAP bitmap=CreateDIBSection(dc,&info,DIB_RGB_COLORS,reinterpret_cast<void**>(&pixels),nullptr,0);
+        Check(dc&&bitmap&&pixels,"activity offscreen surface");auto old=SelectObject(dc,bitmap);
+        coop_connection_hud::Model hud;coop::SessionSnapshot session;session.sessionId=42;session.joined=session.fresh=true;
+        coop_transport::Statistics wire;wire.ready=wire.connected=wire.rttMeasured=true;wire.rttMs=60;wire.rttSampleAtMs=100;
+        for(unsigned row=0;row<unsigned(coop_activity::Scene::Count);++row){
+            const auto scene=coop_activity::Scene(row);
+            const auto view=hud.Update(session,wire,true,true,101,{scene,coop_activity::HasRace(scene)?std::uint8_t(9):std::uint8_t(0)});
+            Check(CoopConnectionHud::Draw(dc,width,height,view,float(dpi)),"activity draw succeeds at narrow and normal widths");GdiFlush();
+            bool secondLine=false;for(int y=MulDiv(24,dpi,96);y<height;++y)for(int x=0;x<width;++x)if(pixels[(y*width+x)*4+3])secondLine=true;
+            Check(secondLine,"teammate activity is visible below ping");
+            bool edge=false;for(int x=0;x<width;++x)if(pixels[((height-1)*width+x)*4+3])edge=true;
+            Check(!edge,"activity stays inside transparent viewport");
+            if(dpi==96&&logicalWidth==360&&(scene==coop_activity::Scene::CarLot||scene==coop_activity::Scene::Race||scene==coop_activity::Scene::AtDestination)){
+                wchar_t path[96]{};std::swprintf(path,96,L"output/connection-activity-%u.png",row);Check(Save(path,pixels,width,height),"activity PNG preview saved");
+            }
+        }
+        SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);
+    }
     Check(CoopConnectionHud::Procedure(nullptr,WM_NCHITTEST,0,0)==HTTRANSPARENT,"HUD never captures mouse hit tests");
     Check(CoopConnectionHud::Procedure(nullptr,WM_MOUSEACTIVATE,0,0)==MA_NOACTIVATE,"HUD never steals focus");
     std::printf("Connection HUD render: %u checks passed; no visible windows.\n",checks);

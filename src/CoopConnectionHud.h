@@ -5,6 +5,7 @@
 #pragma once
 #include "CoopTransport.h"
 #include "CoopTime.h"
+#include "CoopPeerActivity.h"
 #include <cstdio>
 
 namespace coop_connection_hud {
@@ -17,6 +18,7 @@ struct View {
     bool visible = false;
     unsigned rgb = kOrange;
     char text[80]{};
+    char activity[96]{};
 };
 class Model {
     std::uint64_t session_ = 0;
@@ -24,7 +26,7 @@ class Model {
     bool paired_ = false, hadLink_ = false, detached_ = false;
 public:
     View Update(const coop::SessionSnapshot& s, const coop_transport::Statistics& wire,
-                bool admitted, bool gameplay, std::uint32_t now) {
+                bool admitted, bool gameplay, std::uint32_t now, coop_activity::Activity peer = {}) {
         View v;
         const bool scope = s.sessionId || s.joined || gameplay;
         if (!scope) {
@@ -59,6 +61,11 @@ public:
             else std::snprintf(v.text, sizeof(v.text), "Connected | <1 ms");
             break;
         default: break;
+        }
+        if(v.status==Status::Connected||v.status==Status::Measuring){
+            if(!coop_activity::Valid(peer))peer={};
+            if(peer.race)std::snprintf(v.activity,sizeof(v.activity),"Teammate: %s | %s",coop_activity::Label(peer.scene),coop_activity::RaceName(peer.race));
+            else std::snprintf(v.activity,sizeof(v.activity),"Teammate: %s",coop_activity::Label(peer.scene));
         }
         return v;
     }

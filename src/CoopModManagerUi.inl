@@ -10,7 +10,7 @@ struct UiRect{
     float x=0,y=0,w=0,h=0;
     bool Contains(float px,float py)const{return px>=x&&py>=y&&px<x+w&&py<y+h;}
 };
-enum class UiAction{None,Tab,Package,Approve,Play,Manage,Minimize,Maximize,Close,IniMod,IniFile,IniRow,IniSave,IniDiscard,IniReload,IniAll,IniGroup,ImportPick,ImportInstall,ImportCancel,ImportDownloads,ImportConsent,ImportRepair,PackCreate,PackConfirm,PackCancel,PackActivate,PackEdit,PackToggle,PackSave,PackLibrary,UndercoopCategory,UndercoopRole,UndercoopToggle,UndercoopShow,UndercoopOpacity,UndercoopSave,UndercoopDiscard,UndercoopReload,
+enum class UiAction{None,Tab,Package,Approve,Play,Manage,Minimize,Maximize,Close,IniMod,IniFile,IniRow,IniSave,IniDiscard,IniReload,IniAll,IniGroup,ImportPick,ImportFolder,ImportInstall,ImportCancel,ImportDownloads,ImportConsent,ImportRepair,PackCreate,PackConfirm,PackCancel,PackActivate,PackEdit,PackToggle,PackSave,PackLibrary,UndercoopCategory,UndercoopRole,UndercoopToggle,UndercoopShow,UndercoopOpacity,UndercoopSave,UndercoopDiscard,UndercoopReload,
     NoticeToggle,NoticeClose,NoticeAcknowledge,NoticeBody,DeveloperSignIn,DeveloperSubmit,DeveloperSignOut,DeveloperBack,
     BackupAuto,BackupSelect,BackupPage,CareerImportPick,CareerImportSelect,CareerImportPage};
 struct UiHit{
@@ -146,6 +146,7 @@ inline UiEffect DispatchUi(View& view,UiHit hit){
     if(hit.action!=UiAction::None&&hit.action!=UiAction::Minimize&&hit.action!=UiAction::Maximize&&IniDraftGuard(view))return UiEffect::Redraw;
     if(DispatchModpack(view,hit))return UiEffect::Redraw;
     if(hit.action==UiAction::ImportPick){view.tab=5;SyncIniEditor(view);PickImport(view);return UiEffect::Redraw;}
+    if(hit.action==UiAction::ImportFolder){view.tab=5;SyncIniEditor(view);PickImportFolder(view);return UiEffect::Redraw;}
     if(hit.action==UiAction::ImportInstall){BeginImport(view,ImportWork::Install);return UiEffect::Redraw;}
     if(hit.action==UiAction::ImportRepair){BeginImport(view,ImportWork::Repair);return UiEffect::Redraw;}
     if(hit.action==UiAction::ImportDownloads){view.imports.allowDownloads=!view.imports.allowDownloads;return UiEffect::Redraw;}
@@ -254,7 +255,7 @@ inline void Paint(View& view,HDC dc,int pixelsWide,int pixelsHigh,float dpi=96){
     label((Wide(UNDERCOOP_MANAGER_VERSION)+L" / Preview").c_str(),26,height-55,170,22,11,0x737B88);
     const wchar_t* titles[]={L"READY TO DRIVE",L"YOUR MODS",L"REQUIRED COMPONENTS",L"SETUP CHECK",L"MOD SETTINGS",L"ADD MODS",L"MODPACKS",L"UNDERCOOP SETTINGS"};
     const wchar_t* subtitles[]={L"Choose your setup. Keep your original game intact.",L"Enable the packages you want to use in your next session.",
-        L"Know what your mods need before the game starts.",L"A clear view of what is ready and what still needs attention.",L"Your careers stay with this setup when options change. Keep both players' shared settings matching.",L"Inspect an archive, review requirements, then install inside mods only.",L"New modpacks copy your current careers. Switch your whole setup before launching.",L"Your connection, shared world and console. Set up this game copy before playing."};
+        L"Know what your mods need before the game starts.",L"A clear view of what is ready and what still needs attention.",L"Your careers stay with this setup when options change. Keep both players' shared settings matching.",L"Review an archive or folder, then install inside mods only.",L"New modpacks copy your current careers. Switch your whole setup before launching.",L"Your connection, shared world and console. Set up this game copy before playing."};
     label(titles[view.tab],l.content,110,view.tab==7?cw-112:cw,37,view.tab==7?22.0f:25.0f,0xF0F2F6,UiFace::Heading);
     label(subtitles[view.tab],l.content,158,cw,25,13,0x9199A6);
     if(view.tab==0){
@@ -270,7 +271,7 @@ inline void Paint(View& view,HDC dc,int pixelsWide,int pixelsHigh,float dpi=96){
         label(L"Mod files stay in mods. Original assets are not replaced.",l.content+20,y+56,half-40,47,13,0x979FAB,UiFace::Regular,true);
         DrawIcon(r,1,l.content+half+36,y+19,0x9AA4B3);label(L"Separate careers",l.content+half+62,y+16,half-62,25,15,0xE5E8ED,UiFace::Bold);
         label(L"Each setup uses its own save area. Your other careers stay separate.",l.content+half+36,y+56,half-40,47,13,0x979FAB,UiFace::Regular,true);
-        if(l.footer-(l.body+308)>=52)label(L"Add mods accepts ZIP, RAR, 7z and other archives, and downloads known missing requirements. Unknown installers are never executed.",l.content,l.body+308,cw,42,12,0x78818F,UiFace::Regular,true);
+        if(l.footer-(l.body+308)>=52)label(L"Add mods accepts archives and game-ready folders, and downloads known missing requirements. Folder metadata is created for you. Unknown installers are never executed.",l.content,l.body+308,cw,42,12,0x78818F,UiFace::Regular,true);
     }else if(view.tab==1){
         const auto create=ModpackLayout(width,height).Create();r.Box(create.x,create.y,create.w,create.h,0x303744,6);r.Text(L"Create modpack",create.x,create.y,create.w,create.h,12,0xD4DFEF,UiFace::Bold,false,true);
         const auto import=l.Manage();r.Box(import.x,import.y,import.w,import.h,0x303744,6);r.Text(L"Import archive",import.x,import.y,import.w,import.h,12,0xD4DFEF,UiFace::Bold,false,true);

@@ -12,8 +12,8 @@ if not exist UndercoopTransport.lib (
     exit /b 1
 )
 if not exist output mkdir output
-for %%T in (CoopPeerPartVisibilityTests CoopConnectionHudTests CoopConnectionTransportTests) do (
-    cl /nologo /O2 /std:c++17 /utf-8 /EHsc tests\%%T.cpp /Fo:output\%%T.obj /Fe:output\%%T.exe UndercoopTransport.lib ws2_32.lib winmm.lib
+for %%T in (CoopPeerPartVisibilityTests CoopConnectionHudTests CoopConnectionTransportTests CoopPeerActivityTests CoopGeometryHeadersTests CoopGeometryNativeTests CoopGeometryVisualTests CoopManagerFolderImportTests) do (
+    cl /nologo /O2 /std:c++17 /utf-8 /EHsc tests\%%T.cpp /Fo:output\%%T.obj /Fe:output\%%T.exe UndercoopTransport.lib ws2_32.lib winmm.lib user32.lib shell32.lib gdi32.lib
     if errorlevel 1 exit /b 1
     output\%%T.exe
     if errorlevel 1 exit /b 1

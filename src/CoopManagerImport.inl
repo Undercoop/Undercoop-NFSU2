@@ -6,9 +6,12 @@
 // Archive import is pre-launch only. No archive installer/script is executed.
 inline bool EnsureArchiveEngine(const std::wstring&,std::wstring&);
 struct ImportItem{size_t index=0;std::string source,destination,hash;uint64_t bytes=0;bool module=false,config=false;std::string generated;};
+struct ImportFolderFile{std::wstring relative;std::string path,hash;uint64_t bytes=0,fileId=0;uint32_t volume=0;};
 struct ImportPlan{
     std::wstring archive;std::string hash,manifestText;coop_packages::Manifest package;coop_import::Receipt native;
     std::vector<ImportItem> items;std::vector<std::wstring> notes;std::vector<std::string> binaryChoices;uint64_t bytes=0;bool code=false,binary=false,runtimeMissing=false;
+    bool folder=false,adoptFolder=false;
+    std::vector<ImportFolderFile> folderFiles;
 };
 inline bool InspectBinaryArchive(coop_archive::Archive&,const std::wstring&,ImportPlan&,std::wstring&,const std::atomic<bool>*,const std::string&);
 inline std::string ImportHash(const std::string& bytes){coop_mod_scan::Sha256 sha;coop_mods::Hash h{};return sha.Bytes(bytes.data(),bytes.size(),h)?coop_mod_scan::Hex(h):"";}
@@ -219,5 +222,6 @@ inline bool ImportCommit(const std::wstring& root,const ImportPlan& plan,std::ws
         error=L"Could not publish the package. No existing package was replaced; staging is retained under mods/_undercoop.";return false;}
     return true;
 }
+#include "CoopManagerFolderImport.inl"
 #include "CoopArchiveEngineWin.inl"
 #include "CoopBinaryEngineWin.inl"

@@ -71,6 +71,10 @@
 namespace { namespace CoopPeerLabelNative { static void Tick(HWND game,bool focused); } }
 namespace { namespace CoopRearRenderTrace { bool Install(); void Tick(DWORD flow); } }
 namespace { namespace CoopDiscordPresence { static void Observe(DWORD flow,uint32_t track); } }
+namespace { namespace CoopPeerActivity {
+    static void Observe(DWORD now);
+    static coop_activity::Activity Peer(const coop::SessionSnapshot&,DWORD now);
+} }
 
 // ============================================================================
 // Target: Need for Speed Underground 2 v1.2 NTSC (SPEED2.EXE, 4,800,512 bytes)
@@ -767,6 +771,8 @@ bool ReadCoopPhysicalMotion(uintptr_t car,float* orientation,float* velocity,flo
 bool SyncNativePeerRaceProgress(uintptr_t car,const PositionPacket& packet);
 void TickPeerAppearanceRefresh(DWORD flowState);
 void RetirePeerAppearanceOutsideWorld(DWORD flowState);
+namespace CoopGeometryHeadersNative { static void Tick(DWORD flow); }
+namespace CoopGeometryVisualNative { static void Tick(DWORD flow); }
 bool InstallPeerTextureAllocationHooks();
 bool ReadPeerSetupTarget(uintptr_t car,uintptr_t& ride);
 bool IsRemotePeerSetupMetadata(uint8_t playerIndex,uint8_t remoteFlag,uint32_t carType);
@@ -3184,10 +3190,11 @@ void __cdecl UiTick() {
         { CoopPerf::Scope perf(CoopPerf::Part::PeerLabel); CoopPeerLabelNative::Tick(gGameHwnd,focused); }
         { CoopPerf::Scope perf(CoopPerf::Part::Announcements); CoopAnnouncements::Tick(gGameHwnd,focused); }
         const auto now=GetTickCount();
+        CoopPeerActivity::Observe(now);
         if(CoopConnectionHud::NeedsUpdate(now)){
             const auto session=CoopSnapshot();
             CoopConnectionHud::Update(session,gCoopTransport.Snapshot(),
-                CoopConnectedTransportReady(session),IsCoopGameplayActive(),now);
+                CoopConnectedTransportReady(session),IsCoopGameplayActive(),now,CoopPeerActivity::Peer(session,now));
         }
         CoopConnectionHud::Tick(gGameHwnd,focused);
     } } noticeTick;
@@ -3270,6 +3277,8 @@ void __cdecl UiTick() {
     if (!hasFlowState || flowState!=6 || !IsCoopGameplayActive()) InvalidatePublishedMotion();
     // Frontend/shop/banner returns below must not skip lease retirement.
     RetirePeerAppearanceOutsideWorld(hasFlowState?flowState:UINT32_MAX);
+    CoopGeometryHeadersNative::Tick(hasFlowState?flowState:UINT32_MAX);
+    CoopGeometryVisualNative::Tick(hasFlowState?flowState:UINT32_MAX);
     if (hasFlowState) {
         { CoopPerf::Scope perf(CoopPerf::Part::CareerPresentation); TickCoopVisualUi(flowState); }
         { CoopPerf::Scope perf(CoopPerf::Part::Special); TickCoopSpecialController(flowState); }
@@ -4154,10 +4163,13 @@ static uint32_t CoopCommittedPeerSpawnCount(uint8_t role,uint8_t remote,uint32_t
     gCar1LoadedForRace=false;
     return 0;
 }
+#include "CoopGeometryHeadersNative.inl"
+
 void __cdecl SetupCoopCar1BeforeRaceLoading() {
     if (!IsCoopGameplayActive()) {
         return;
     }
+    CoopGeometryHeadersNative::Begin();
     uintptr_t carArrayPtr = 0;
     if (!ReadGameMemory(0x0089E810, &carArrayPtr, sizeof(carArrayPtr)) || !IsValidUserPtr(carArrayPtr)) {
         return;
@@ -4408,6 +4420,8 @@ struct PeerAppearanceRefreshState {
     DWORD pendingSince = 0;
     bool baselineSet = false;
     bool timeoutLogged = false;
+    DWORD residencyRetryAt = 0;
+    unsigned residencyRetries = 0;
 };
 static PeerAppearanceRefreshState gPeerAppearanceRefresh{};
 
@@ -4652,6 +4666,44 @@ void TickPeerAppearanceRefresh(DWORD flowState) {
             }
             return;
         }
+        if(CoopGeometryHeadersNative::enabled) {
+            coop_geometry::Residency meshes{};
+            const uintptr_t resourceNode=FindPeerAppearanceResourceNode(refresh.pendingResource);
+            if(!resourceNode || !CoopGeometryHeadersNative::ResourceDrawable(resourceNode,meshes)) {
+                if(!refresh.timeoutLogged && now-refresh.pendingSince>20000) {
+                    char text[192]{};std::snprintf(text,sizeof(text),
+                        "[GEOMETRY] Peer visual commit held: resource=%u indexed=%u resident=%u missing=%u first=%08X; existing visual kept.\r\n",
+                        refresh.pendingResource,meshes.indexed,meshes.resident,meshes.missing,meshes.firstMissing);LogMessage(text);
+                    refresh.timeoutLogged=true;
+                }
+                // A completed callback is not proof of a drawable solid. Keep
+                // the old visual until actual indexed geometry is resident.
+                // Optional absent LOD hashes retain their native fallback.
+                if(meshes.missing && refresh.residencyRetries<3 &&
+                    (!refresh.residencyRetryAt || now-refresh.residencyRetryAt>=1000)) {
+                    uintptr_t body=0,wheels=0;int32_t refs=0;uint32_t state=0;
+                    if(ReadGameMemory(resourceNode+8,&refs,4)&&refs>0 &&
+                        ReadGameMemory(resourceNode+0x0C,&state,4)&&state==2 &&
+                        ReadGameMemory(resourceNode+0x954,&body,4)&&body==resourceNode+0x960 &&
+                        ReadGameMemory(resourceNode+0x958,&wheels,4)&&wheels==resourceNode+0xC78) {
+                        // Only our staging lease, with the singleton native
+                        // queue idle: resubmit through its original callbacks.
+                        const uint8_t pending=0;const uint32_t queued=0;
+                        SafeWriteBytes(body+0x0C,&pending,1);
+                        SafeWriteBytes(wheels+8,&pending,1);
+                        SafeWriteBytes(resourceNode+0x0C,&queued,4);
+                        ++refresh.residencyRetries;refresh.residencyRetryAt=now;
+                        reinterpret_cast<void(__thiscall*)(void*,void*,void*)>(0x63BCD0)(
+                            reinterpret_cast<void*>(kNativeCarLoader),nullptr,nullptr);
+                        char text[192]{};std::snprintf(text,sizeof(text),
+                            "[GEOMETRY] Staged peer drawable incomplete: resource=%u indexed=%u resident=%u missing=%u first=%08X retry=%u; old visual retained.\r\n",
+                            refresh.pendingResource,meshes.indexed,meshes.resident,meshes.missing,meshes.firstMissing,refresh.residencyRetries);
+                        LogMessage(text);
+                    }
+                }
+                return;
+            }
+        }
         if (peerModel != model) {
             // Native Car::SetupRide rebuilds model table, SimEntity/collision,
             // visual, lamps and transforms while preserving the Car object.
@@ -4740,6 +4792,7 @@ void TickPeerAppearanceRefresh(DWORD flowState) {
     refresh.pendingHash = appearance;
     refresh.pendingSince = now;
     refresh.timeoutLogged = false;
+    refresh.residencyRetryAt = 0;refresh.residencyRetries = 0;
     // Native live traffic uses this null-callback pump. Poll its resource state
     // instead of taking ownership of the engine's singleton deferred callback.
     reinterpret_cast<void(__thiscall*)(void*, void*, void*)>(0x0063BCD0)(
@@ -4757,6 +4810,8 @@ void RetirePeerAppearanceOutsideWorld(DWORD flowState) {
     ReleasePeerAppearanceLease(refresh.retainedResource);
     refresh.baselineSet=false;refresh.baselineCar=0;gPeerModelPoseRestore={};
 }
+
+#include "CoopGeometryVisualNative.inl"
 
 __declspec(naked) void TrampolineRaceLoadingLoop() {
     __asm {
@@ -6277,6 +6332,7 @@ void ShowCoopChatMessage(uint16_t player,const char* name,const char* text){Coop
 void ShowCoopChatStatus(const char* text){CoopAnnouncements::Post(text);}
 void SetCoopSponsorPrompt(const char* text){CoopAnnouncements::SetSponsorPrompt(text);}
 #include "CoopChatRuntime.inl"
+#include "CoopPeerActivityRuntime.inl"
 static_assert(coop_console::kMessageBytes==coop_chat::kMaxTextBytes,"Console and chat wire budgets must match");
 
 static void TraceCoopAIRepair(DWORD flow) {
@@ -9223,6 +9279,8 @@ DWORD WINAPI RunObserver(void* moduleHandle) {
     const bool spawnerHookInstalled = InstallFreeRoamCarSpawnHook();
     SetCoopRenderBranch(false); // preserve vanilla SP until an isolated COOP career is selected
     InstallStage4CarLoaderHook();
+    CoopGeometryHeadersNative::Install();
+    CoopGeometryVisualNative::Install();
     InstallTrackLoadingReadyCheck();
     InstallWheelAngularPositionHook();
     InstallProxyWheelMatrixHook();
@@ -9414,6 +9472,7 @@ DWORD WINAPI RunObserver(void* moduleHandle) {
         TickCoopRaceNetwork(nowTick);
         TickCoopUrlNetwork(nowTick);
         TickCoopChatNetwork(nowTick);
+        TickCoopPeerActivityNetwork(nowTick);
         TickCoopMovieNetwork(nowTick);
         TickCoopSponsorNetwork(nowTick);
         TickCoopVisualNetwork(nowTick);

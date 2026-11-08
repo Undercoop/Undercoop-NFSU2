@@ -19,12 +19,15 @@
 #include <winhttp.h>
 #include <commdlg.h>
 #include <shellapi.h>
+#include <shobjidl.h>
 #include <wintrust.h>
 #include <softpub.h>
 #pragma comment(lib,"advapi32.lib")
 #pragma comment(lib,"wintrust.lib")
 #pragma comment(lib,"winhttp.lib")
 #pragma comment(lib,"comdlg32.lib")
+#pragma comment(lib,"ole32.lib")
+#pragma comment(lib,"uuid.lib")
 #include <dwmapi.h>
 #pragma comment(lib,"dwmapi.lib")
 #include "CoopProfileContext.h"
@@ -57,6 +60,9 @@ struct State {
     coop_packages::Plan plan;std::string pack;std::wstring saveFolder,spFolder;std::vector<ConfigWatch> watches;
     bool ready=false,nativeTrusted=false,fatal=false;HMODULE native=nullptr;std::vector<HMODULE> nativeModules;
     std::vector<std::wstring> inventoryNativePaths;
+    // Unregistered user folders are visible to the importer, never part of an
+    // effective setup until their contents have been reviewed and registered.
+    std::vector<std::wstring> pendingFolders;
 };
 inline State state;
 inline std::wstring Wide(const std::string& value){
@@ -133,7 +139,7 @@ inline std::wstring PackageDirectory(const std::string& id){return (state.packag
 inline bool SnapshotModpackCareers(const std::wstring&,const std::wstring&,const std::atomic<bool>*);
 #include "CoopManagerModpacks.inl"
 inline bool Discover(const std::wstring& root){
-    state.root=root;state.catalog.clear();state.selected.clear();state.imported.clear();state.error.clear();state.packageRoot.clear();state.instanceId.clear();state.instanceName.clear();
+    state.root=root;state.catalog.clear();state.selected.clear();state.imported.clear();state.pendingFolders.clear();state.error.clear();state.packageRoot.clear();state.instanceId.clear();state.instanceName.clear();
     if(!RealPath(root,true)||!RealPath(root+L"\\mods",true))return Fail(L"The mods folder is missing or linked.");
     WIN32_FIND_DATAW row{};HANDLE find=FindFirstFileW((root+L"\\mods\\*").c_str(),&row);
     if(find==INVALID_HANDLE_VALUE)return Fail(L"Cannot inspect the mods folder.");
@@ -142,8 +148,18 @@ inline bool Discover(const std::wstring& root){
         const std::wstring name=row.cFileName;if(name==L"."||name==L".."||name==L"_undercoop")continue;
         if(row.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT){error=L"Linked mod packages are not supported.";break;}
         if(!(row.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY))continue;
+        const auto manifestPath=root+L"\\mods\\"+name+L"\\undercoop.mod.ini";
+        const DWORD manifestAttrs=GetFileAttributesW(manifestPath.c_str());
+        if(manifestAttrs==INVALID_FILE_ATTRIBUTES){
+            const DWORD missing=GetLastError();
+            if(missing==ERROR_FILE_NOT_FOUND||missing==ERROR_PATH_NOT_FOUND){
+                state.pendingFolders.push_back(name);
+                if(state.pendingFolders.size()>256){error=L"Too many unregistered mod folders.";break;}
+                continue;
+            }
+        }
         std::string text;coop_packages::Manifest item;coop_packages::Error why;
-        if(!ReadText(root+L"\\mods\\"+name+L"\\undercoop.mod.ini",text)||!coop_packages::ParseManifest(text,item,why)){
+        if(!ReadText(manifestPath,text)||!coop_packages::ParseManifest(text,item,why)){
             error=L"Package needs a supported import: "+name+L". "+Wide(why.detail);break;
         }
         if(Wide(item.id)!=name){error=L"Package ID must match its lowercase folder name: "+name;break;}
@@ -155,6 +171,7 @@ inline bool Discover(const std::wstring& root){
     if(error.empty()&&GetLastError()!=ERROR_NO_MORE_FILES)error=L"Package enumeration failed.";
     FindClose(find);if(!error.empty())return Fail(error);
     std::sort(state.catalog.begin(),state.catalog.end(),[](const auto& a,const auto& b){return a.id<b.id;});
+    std::sort(state.pendingFolders.begin(),state.pendingFolders.end());
     std::string chosen;
     const auto selectionPath=root+L"\\mods\\_undercoop\\state\\selection.txt";
     const DWORD selectionAttrs=GetFileAttributesW(selectionPath.c_str());

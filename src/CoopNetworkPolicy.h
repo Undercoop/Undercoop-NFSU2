@@ -6,6 +6,7 @@
 #pragma once
 #include "CoopTransport.h"
 #include "CoopWorldWire.h"
+#include "CoopPeerActivity.h"
 #include <cstring>
 
 namespace coop_network {
@@ -18,6 +19,12 @@ inline DeliveryPolicy Classify(const void* data,std::size_t size,std::uint32_t h
         out.valid=size==sizeof(coop::SessionMessage);out.discovery=out.valid;return out;
     }
     if(magic==humanMagic&&size==humanSize){out.delivery=coop_transport::Delivery::LatestState;out.stream=kHumanMotionStream;return out;}
+    if(magic==coop_activity::kMagic){
+        coop_activity::Packet packet{};
+        if(size!=sizeof(packet)){out.valid=false;return out;}
+        std::memcpy(&packet,data,sizeof(packet));out.valid=coop_activity::Valid(packet);
+        out.delivery=coop_transport::Delivery::LatestState;out.stream=coop_activity::kStream;return out;
+    }
     if(magic==coop_world_wire::kEventMagic){
         coop_world::Event event{};std::uint32_t player=0;
         if(!coop_world_wire::DecodeEvent(data,size,event,player,1)){out.valid=false;return out;}
@@ -27,7 +34,7 @@ inline DeliveryPolicy Classify(const void* data,std::size_t size,std::uint32_t h
         const bool racePose=event.action==coop_world::Action::Spawn&&
             event.state.kind==coop_world::Kind::RaceRacer&&
             event.state.motion.finishStatus==coop_world::kFinishRacing;
-        if((event.action==coop_world::Action::Update||racePose)&&event.state.key.id!=kHumanMotionStream){
+        if((event.action==coop_world::Action::Update||racePose)&&event.state.key.id!=kHumanMotionStream&&event.state.key.id!=coop_activity::kStream){
             out.delivery=coop_transport::Delivery::LatestState;out.stream=event.state.key.id;
         }
     }

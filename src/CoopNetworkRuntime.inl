@@ -16,7 +16,7 @@ static constexpr bool CoopApplicationPacketIdsUnique(){
         coop_special_recovery::kMagic,coop_world_impact::kMagic,CoopAIRosterNative::kMagic,
         CoopFleetAssetsNative::kMagic,coop_world_wire::kEventMagic,coop_world_wire::kLeaseMagic,
         coop_fleet_load::kMagic,kPacketMagic,kCarCustomizationMagic,coop_transport::kMagic,
-        kBeaconMagic,kJoinMagic,kAckMagic};
+        kBeaconMagic,kJoinMagic,kAckMagic,coop_activity::kMagic};
     for(size_t i=0;i<std::size(ids);++i){
         if(!ids[i])return false;
         for(size_t j=i+1;j<std::size(ids);++j)if(ids[i]==ids[j])return false;
@@ -65,6 +65,7 @@ static bool ReceiveCoopHumanPacket(const char* data,int bytes,const sockaddr_in&
 static void DispatchCoopApplicationPacket(const char* data,int bytes,const sockaddr_in& sender,DWORD now){
     if(ReceiveCoopSessionPacket(data,bytes,sender,now))return;
     if(ReceiveCoopModPacket(data,bytes,sender,now))return;
+    if(ReceiveCoopPeerActivityPacket(data,bytes,sender,now))return;
     const auto admission=CoopSnapshot();
     if(!admission.initialBarrierComplete&&!CoopModsReady(admission))return;
     if(ReceiveCoopRetiredPausePacket(data,bytes))return;

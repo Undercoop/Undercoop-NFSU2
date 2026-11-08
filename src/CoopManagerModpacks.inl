@@ -58,7 +58,11 @@ inline bool ModpackReadCatalog(const std::wstring& root,ModpackLoaded& loaded,bo
         if(library&&!(row.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)&&!(row.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT))continue;
         if(!(row.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)||(row.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT)){okay=false;break;}
         coop_packages::Manifest p;coop_packages::Error why;std::string text;
-        if(!ReadText(root+L"\\"+name+L"\\undercoop.mod.ini",text)||!coop_packages::ParseManifest(text,p,why)||Wide(p.id)!=name||loaded.catalog.size()>=256){okay=false;break;}
+        const auto manifest=root+L"\\"+name+L"\\undercoop.mod.ini";
+        if(library&&GetFileAttributesW(manifest.c_str())==INVALID_FILE_ATTRIBUTES){
+            const auto missing=GetLastError();if(missing==ERROR_FILE_NOT_FOUND||missing==ERROR_PATH_NOT_FOUND)continue;
+        }
+        if(!ReadText(manifest,text)||!coop_packages::ParseManifest(text,p,why)||Wide(p.id)!=name||loaded.catalog.size()>=256){okay=false;break;}
         const auto receiptPath=root+L"\\"+name+L"\\undercoop.native.txt";const DWORD attrs=GetFileAttributesW(receiptPath.c_str());
         if(attrs!=INVALID_FILE_ATTRIBUTES){coop_import::Receipt receipt;if(!ReadText(receiptPath,text,1024*1024)||!coop_import::Decode(text,receipt)||receipt.id!=p.id||receipt.version!=p.version||p.kind!=coop_packages::Kind::Dependency){okay=false;break;}loaded.imported[p.id]=std::move(receipt);}
         else if(GetLastError()!=ERROR_FILE_NOT_FOUND){okay=false;break;}

@@ -172,14 +172,18 @@ public:
         target->DrawTextLayout(D2D1::Point2F(x,y),layout.Get(),brush.Get(),D2D1_DRAW_TEXT_OPTIONS_CLIP);
         target->PopAxisAlignedClip();
     }
-    void ColoredText(const wchar_t* text,float x,float y,float width,float height,unsigned rgb) {
+    void ColoredText(const wchar_t* text,float x,float y,float width,float height,unsigned rgb,float fontSize=14,bool fit=false) {
         auto layout=Layout(text,width,height,0,false);if(!layout)return;
-        layout->SetFontSize(14,{0,UINT32(std::wcslen(text))});
+        const DWRITE_TEXT_RANGE range{0,UINT32(std::wcslen(text))};layout->SetFontSize(fontSize,range);
+        if(fit){DWRITE_TEXT_METRICS metrics{};if(SUCCEEDED(layout->GetMetrics(&metrics))&&metrics.widthIncludingTrailingWhitespace>width)
+            layout->SetFontSize((std::max)(9.0f,fontSize*width/metrics.widthIncludingTrailingWhitespace),range);}
+        target->PushAxisAlignedClip(D2D1::RectF(x-1,y-1,x+width+1,y+height+1),D2D1_ANTIALIAS_MODE_ALIASED);
         brush->SetColor(D2D1::ColorF(0.015f,0.02f,0.025f,0.95f));
         for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)if(dx||dy)
             target->DrawTextLayout(D2D1::Point2F(x+dx,y+dy),layout.Get(),brush.Get());
         brush->SetColor(D2D1::ColorF(rgb,1.0f));
         target->DrawTextLayout(D2D1::Point2F(x,y),layout.Get(),brush.Get());
+        target->PopAxisAlignedClip();
     }
 };
 // Only our two owned top-level overlays are per-monitor aware. The game's

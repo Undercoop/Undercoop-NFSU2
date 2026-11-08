@@ -14,6 +14,7 @@ static HDC dc=nullptr;static HBITMAP bitmap=nullptr;static HGDIOBJ previous=null
 static int surfaceWidth=0,surfaceHeight=0;
 static float paintedDpi=0;static unsigned paintedRgb=0;
 static char paintedText[80]{};
+static char paintedActivity[96]{};
 static DWORD updatedAt=0;static bool updated=false;
 static POINT placedAt{};static bool placed=false;
 static coop_connection_hud::View view;
@@ -21,7 +22,7 @@ static void Initialize(HMODULE value){module=value;}
 static void Hide(){if(window&&IsWindowVisible(window))ShowWindow(window,SW_HIDE);}
 static void ClearSurface(){
     if(dc&&previous)SelectObject(dc,previous);if(bitmap)DeleteObject(bitmap);if(dc)DeleteDC(dc);
-    dc=nullptr;bitmap=nullptr;previous=nullptr;surfaceWidth=surfaceHeight=0;paintedDpi=0;paintedText[0]=0;
+    dc=nullptr;bitmap=nullptr;previous=nullptr;surfaceWidth=surfaceHeight=0;paintedDpi=0;paintedText[0]=paintedActivity[0]=0;
 }
 static LRESULT CALLBACK Procedure(HWND target,UINT message,WPARAM wp,LPARAM lp){
     if(message==WM_NCHITTEST)return HTTRANSPARENT;if(message==WM_MOUSEACTIVATE)return MA_NOACTIVATE;
@@ -33,6 +34,10 @@ static bool Draw(HDC target,int width,int height,const coop_connection_hud::View
     wchar_t text[80]{};MultiByteToWideChar(CP_UTF8,0,state.text,-1,text,80);
     const float scale=dpi/96.0f;
     renderer.ColoredText(text,3,2,width/scale-6,height/scale-4,state.rgb);
+    if(state.activity[0]){
+        wchar_t activity[96]{};MultiByteToWideChar(CP_UTF8,0,state.activity,-1,activity,96);
+        renderer.ColoredText(activity,3,24,width/scale-6,height/scale-26,0xCED3D9,12,true);
+    }
     return renderer.End();
 }
 static bool Paint(int width,int height,float dpi){
@@ -46,12 +51,12 @@ static bool Paint(int width,int height,float dpi){
         surfaceWidth=width;surfaceHeight=height;
     }
     if(!Draw(dc,width,height,view,dpi))return false;
-    std::memcpy(paintedText,view.text,sizeof(paintedText));paintedRgb=view.rgb;paintedDpi=dpi;return true;
+    std::memcpy(paintedText,view.text,sizeof(paintedText));std::memcpy(paintedActivity,view.activity,sizeof(paintedActivity));paintedRgb=view.rgb;paintedDpi=dpi;return true;
 }
 static bool NeedsUpdate(DWORD now){return !updated||coop_time::Elapsed(now,updatedAt)>=250;}
 static void Update(const coop::SessionSnapshot& session,const coop_transport::Statistics& wire,
-                   bool admitted,bool gameplay,DWORD now){
-    view=model.Update(session,wire,admitted,gameplay,now);updatedAt=now;updated=true;
+                   bool admitted,bool gameplay,DWORD now,coop_activity::Activity activity={}){
+    view=model.Update(session,wire,admitted,gameplay,now,activity);updatedAt=now;updated=true;
 }
 static void Tick(HWND game,bool focused){
     // State snapshots and raster work are capped at four updates per second.
@@ -70,9 +75,9 @@ static void Tick(HWND game,bool focused){
     if(MonitorFromWindow(window,MONITOR_DEFAULTTONEAREST)!=MonitorFromRect(&client,MONITOR_DEFAULTTONEAREST)){
         SetWindowPos(window,nullptr,client.left,client.top,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);paintedDpi=0;}
     const float dpi=coop_overlay::WindowDpi(window),scale=dpi/96.0f;
-    const int width=std::min(int(client.right-client.left)-24,int(360*scale)),height=int(32*scale);
+    const int width=std::min(int(client.right-client.left)-24,int(360*scale)),height=int((view.activity[0]?48:32)*scale);
     if(width<1||height<1)return;
-    const bool repaint=width!=surfaceWidth||height!=surfaceHeight||paintedDpi!=dpi||paintedRgb!=view.rgb||std::strcmp(paintedText,view.text);
+    const bool repaint=width!=surfaceWidth||height!=surfaceHeight||paintedDpi!=dpi||paintedRgb!=view.rgb||std::strcmp(paintedText,view.text)||std::strcmp(paintedActivity,view.activity);
     if(repaint)
         if(!Paint(width,height,dpi)){Hide();return;}
     POINT at{client.right-width-int(12*scale),client.top+int(10*scale)},source{};
