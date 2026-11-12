@@ -62,7 +62,12 @@ template<class V> inline UiHit ModpackHitTest(const V& view,float x,float y,floa
         for(size_t i=0;i<l.Members()&&p.first+i<p.choices.size();++i)if(l.Member(i).Contains(x,y))return {UiAction::PackToggle,p.first+i};return {};}
     if(l.Library().Contains(x,y))return {UiAction::PackLibrary};
     if(l.Import().Contains(x,y))return {UiAction::PackImport};
-    for(size_t i=0;i<l.Rows()&&p.first+i<p.packs.size();++i){if(l.Activate(i).Contains(x,y))return {UiAction::PackActivate,p.first+i};if(l.Edit(i).Contains(x,y))return {UiAction::PackEdit,p.first+i};}return {};
+    for(size_t i=0;i<l.Rows()&&p.first+i<p.packs.size();++i){
+        const size_t index=p.first+i;
+        if(l.Activate(i).Contains(x,y))return {p.packs[index].id==state.instanceId?UiAction::PackDeactivate:UiAction::PackActivate,index};
+        if(l.Edit(i).Contains(x,y))return {UiAction::PackEdit,index};
+    }
+    return {};
 }
 template<class V> inline bool DispatchModpack(V& view,UiHit hit){
     auto& p=view.modpacks;
@@ -74,7 +79,17 @@ template<class V> inline bool DispatchModpack(V& view,UiHit hit){
     if(hit.action==UiAction::PackToggle&&hit.index<p.choices.size()){const auto id=p.choices[hit.index].id;const auto found=std::find(p.members.begin(),p.members.end(),id);if(found==p.members.end())p.members.push_back(id);else p.members.erase(found);return true;}
     if(hit.action==UiAction::PackSave){if(EditModpack(p.editing,p.members)){p.editing.clear();p.message=L"Modpack updated. Other instances and the mod library are unchanged.";RefreshModpacks(view);view.ini.selected=SIZE_MAX;view.ini.opened={};view.ini.files.clear();}else p.message=state.error;return true;}
     if(hit.action==UiAction::PackActivate&&hit.index<p.packs.size()){if(ActivateModpack(p.packs[hit.index].id)){p.message=L"Active: "+state.instanceName+L". Only this instance's selected mods will load.";view.ini.selected=SIZE_MAX;view.ini.opened={};view.ini.files.clear();}else p.message=state.error;return true;}
-    if(hit.action==UiAction::PackLibrary){if(UseModLibrary()){p.message=L"Custom setup active. Your saved modpacks are unchanged.";view.ini.selected=SIZE_MAX;view.ini.opened={};view.ini.files.clear();}else p.message=state.error;return true;}return false;
+    if(hit.action==UiAction::PackLibrary||hit.action==UiAction::PackDeactivate){
+        if(hit.action==UiAction::PackDeactivate&&(hit.index>=p.packs.size()||p.packs[hit.index].id!=state.instanceId))return true;
+        if(UseModLibrary()){
+            p.message=L"Previous custom setup restored.";
+            view.ini.selected=SIZE_MAX;
+            view.ini.opened={};
+            view.ini.files.clear();
+        }else p.message=state.error;
+        return true;
+    }
+    return false;
 }
 template<class V> inline void PaintModpacks(V& view,float width,float height){
     auto& p=view.modpacks;auto& r=view.renderer;ModpackLayout l(width,height);const float cw=l.base.ContentWidth();
@@ -93,6 +108,6 @@ template<class V> inline void PaintModpacks(V& view,float width,float height){
     button(L"Use custom setup",l.Library());button(L"Import modpack",l.Import());const size_t max=p.packs.size()>l.Rows()?p.packs.size()-l.Rows():0;p.first=(std::min)(p.first,max);
     if(p.packs.empty()){r.Box(l.base.content,l.base.body,cw,138,0x191B1F,8,0x2C3037);text(L"No modpacks yet",l.base.content+22,l.base.body+20,cw-44,30,21,0xE8EDF5,UiFace::Bold);text(L"Import a supported modpack ZIP, or create a snapshot from My mods. Imported packs remain inactive until you choose Activate.",l.base.content+22,l.base.body+65,cw-44,50,14,0xA6AFBD,UiFace::Regular,true);}
     for(size_t i=0;i<l.Rows()&&p.first+i<p.packs.size();++i){const auto& pack=p.packs[p.first+i];const auto box=l.Card(i);const bool active=pack.id==state.instanceId;r.Box(box.x,box.y,box.w,box.h,active?0x232B37:0x191B1F,8,active?0x5A6A83:0x2C3037);
-        text(pack.name,box.x+18,box.y+10,box.w-225,26,17,0xE8EDF5,UiFace::Bold);text(std::to_wstring(pack.packages)+L" packages / "+std::to_wstring(pack.enabled)+L" enabled"+(active?L" / ACTIVE":L""),box.x+18,box.y+43,box.w-225,23,12);button(active?L"Active":L"Activate",l.Activate(i),!active);button(L"Edit",l.Edit(i));}
+        text(pack.name,box.x+18,box.y+10,box.w-225,26,17,0xE8EDF5,UiFace::Bold);text(std::to_wstring(pack.packages)+L" packages / "+std::to_wstring(pack.enabled)+L" enabled"+(active?L" / ACTIVE":L""),box.x+18,box.y+43,box.w-225,23,12);button(active?L"Deactivate":L"Activate",l.Activate(i),!active);button(L"Edit",l.Edit(i));}
     text(state.instanceId.empty()?L"Current: Custom setup":L"Current: "+state.instanceName,l.base.content,l.base.footer-28,cw,23,12,0x9EADBF);
 }

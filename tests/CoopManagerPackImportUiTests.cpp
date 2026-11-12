@@ -1,7 +1,7 @@
 // Copyright (C) 2026 batuhan. GNU GPL version 3 only.
 // Additional permission in LICENSE-7ZIP-EXCEPTION.txt.
 // Reuse the isolated TEMP fixture and native-load traps. Its original test
-// entry point is not called; no modpack commit, activation or game is run.
+// entry point is not called. Launcher setup switching uses only fixture files.
 #define main CoopExistingFolderTests_NotInvoked
 #include "CoopManagerFolderImportTests.cpp"
 #undef main
@@ -63,8 +63,72 @@ static void PackCompletionDoesNotSwitch(Fixture& fixture,bool success){
     CHECK(panel.phase==(success?m::ImportPhase::Complete:m::ImportPhase::Failed));
     CHECK(view.tab==(success?6:5));CHECK(nativeLoads==0);
 }
+static void PackDeactivationRestoresCustom(Fixture& fixture){
+    const std::wstring tag=L"pack-deactivation";
+    const auto root=fixture.Use(tag);
+    Package(fixture,tag,"library-a");
+    Package(fixture,tag,"library-b");
+    const std::wstring id=L"pack-test";
+    const auto pack=tag+L"\\mods\\_undercoop\\modpacks\\"+id;
+    const auto revision=pack+L"\\r1";
+    Package(fixture,revision,"pack-a");
+    Package(fixture,revision,"pack-b");
+    const auto manifest=revision+L"\\mods\\pack-b\\undercoop.mod.ini";
+    fixture.File(manifest,Read(fixture.Path(manifest))+"[Requires]\nmissing-dependency=1\n");
+    fixture.File(pack+L"\\current.txt","r1");
+    fixture.File(revision+L"\\name.txt","Test modpack");
+    const auto packSelection=fixture.File(revision+L"\\selection.txt","pack-a\n");
+    const auto librarySelection=tag+L"\\mods\\_undercoop\\state\\selection.txt";
+    fixture.File(librarySelection,"library-b\n");
+    const std::string libraryCareer="NFSU2 Undercoop Custom Test";
+    const std::string packCareer="NFSU2 Undercoop Modpack Test";
+    const auto libraryBinding=fixture.File(tag+L"\\mods\\_undercoop\\state\\career-domain.txt",libraryCareer);
+    const auto packBinding=fixture.File(pack+L"\\career-domain.txt",packCareer);
+    const auto marker=root+L"\\mods\\_undercoop\\state\\active-modpack.txt";
+    CHECK(m::Discover(root));
+
+    m::View view;
+    view.tab=6;
+    m::RefreshModpacks(view);
+    const auto button=m::ModpackLayout(934,675).Activate(0);
+    const auto hit=[&]{return m::HitTest(view,button.x+3,button.y+3,934,675);};
+    CHECK(hit().action==m::UiAction::PackActivate);
+    CHECK(m::DispatchUi(view,hit())==m::UiEffect::Redraw);
+    CHECK(m::state.instanceId==id&&Read(marker)=="pack-test");
+    CHECK(hit().action==m::UiAction::PackDeactivate);
+    m::state.selected={"pack-a","pack-b"};
+    CHECK(!m::MakePlan());
+
+    // A corrupt custom selection fails before either saved selection changes.
+    fixture.File(librarySelection,"INVALID/PACKAGE\n");
+    CHECK(m::DispatchUi(view,hit())==m::UiEffect::Redraw);
+    CHECK(m::state.instanceId==id&&Read(marker)=="pack-test");
+    CHECK(Read(packSelection)=="pack-a\n");
+
+    fixture.File(librarySelection,"library-b\r\n\r\n");
+    CHECK(m::DispatchUi(view,hit())==m::UiEffect::Redraw);
+    CHECK(m::state.instanceId.empty()&&m::state.packageRoot.empty());
+    CHECK(m::state.selected==std::vector<std::string>{"library-b"});
+    CHECK(Read(marker).empty());
+    CHECK(Read(fixture.Path(librarySelection))=="library-b\r\n\r\n");
+    CHECK(Read(packSelection)=="pack-a\npack-b\n");
+    CHECK(Read(libraryBinding)==libraryCareer&&Read(packBinding)==packCareer);
+    std::wstring career;
+    CHECK(m::ResolveCareerDomain(L"NFSU2 Undercoop Legacy Test",career)&&career==m::Wide(libraryCareer));
+    CHECK(hit().action==m::UiAction::PackActivate);
+
+    Reset();
+    CHECK(m::Discover(root)&&m::state.instanceId.empty());
+    CHECK(m::state.selected==std::vector<std::string>{"library-b"});
+    CHECK(m::ActivateModpack(id));
+    CHECK(m::state.selected==std::vector<std::string>{"pack-a","pack-b"});
+    CHECK(m::ResolveCareerDomain(L"NFSU2 Undercoop Legacy Test",career)&&career==m::Wide(packCareer));
+    CHECK(nativeLoads==0);
+}
+
 int main(){
     PackLayoutAndConsent();Fixture fixture;PackCompletionDoesNotSwitch(fixture,true);PackCompletionDoesNotSwitch(fixture,false);
-    CHECK(nativeLoads==0);std::printf("Modpack import UI: %zu checks, %zu failures; TEMP only, no import/activation/native execution.\n",checks,failures);
+    PackDeactivationRestoresCustom(fixture);
+    CHECK(nativeLoads==0);std::printf("Modpack launcher UI: %zu checks, %zu failures; TEMP only, no native execution.\n",checks,failures);
     return failures?1:0;
 }

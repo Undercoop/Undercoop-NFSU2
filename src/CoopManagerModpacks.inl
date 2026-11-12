@@ -45,10 +45,19 @@ inline bool ModpackAtomicText(const std::wstring& path,const std::string& text){
     if(RealPath(pending))DeleteFileW(pending.c_str());return false;
 }
 inline std::string ModpackSelectionText(const std::vector<std::string>& selected){std::string text;for(const auto& id:selected)text+=id+"\n";return text;}
-inline bool ModpackSelection(const std::string& text,std::vector<std::string>& selected){
+inline bool ModpackSelection(const std::string& text,std::vector<std::string>& selected,bool legacyCustom=false){
     selected.clear();if(text.size()>16384)return false;std::set<std::string> unique;size_t at=0;
-    while(at<text.size()){const auto end=text.find('\n',at);const auto id=text.substr(at,end==std::string::npos?end:end-at);
-        if(!coop_packages::detail::Id(id,{})||!unique.insert(id).second||unique.size()>256)return false;selected.push_back(id);if(end==std::string::npos)break;at=end+1;}
+    while(at<text.size()){
+        const auto end=text.find('\n',at);
+        auto id=text.substr(at,end==std::string::npos?end:end-at);
+        if(legacyCustom&&!id.empty()&&id.back()=='\r')id.pop_back();
+        if(!legacyCustom||!id.empty()){
+            if(!coop_packages::detail::Id(id,{})||!unique.insert(id).second||unique.size()>256)return false;
+            selected.push_back(std::move(id));
+        }
+        if(end==std::string::npos)break;
+        at=end+1;
+    }
     return true;
 }
 inline bool ModpackReadCatalog(const std::wstring& root,ModpackLoaded& loaded,bool library=false){
@@ -100,10 +109,20 @@ inline bool LoadActiveModpack(){
     ModpackLoaded loaded;if(!ReadModpack(Wide(id),loaded))return false;ApplyModpack(std::move(loaded));return true;
 }
 inline bool ReadCustomModSetup(ModpackLoaded& library,bool validatePlan=false){
-    if(!ModpackReadCatalog(state.root+L"\\mods",library,true))return false;std::string selection;const auto path=state.root+L"\\mods\\_undercoop\\state\\selection.txt";
-    if(GetFileAttributesW(path.c_str())!=INVALID_FILE_ATTRIBUTES){if(!ReadText(path,selection,16384)||!ModpackSelection(selection,library.selected))return Fail(L"Cannot read the custom setup's selection.");}
-    else if(GetLastError()!=ERROR_FILE_NOT_FOUND)return Fail(L"Cannot inspect the custom selection.");
-    else for(const auto& p:library.catalog)if(p.kind==coop_packages::Kind::Assets||p.kind==coop_packages::Kind::Data||StandaloneNative(p.id))library.selected.push_back(p.id);
+    if(!ModpackReadCatalog(state.root+L"\\mods",library,true))return false;
+    library.selected.clear();
+    std::string selection;
+    const auto path=state.root+L"\\mods\\_undercoop\\state\\selection.txt";
+    if(GetFileAttributesW(path.c_str())!=INVALID_FILE_ATTRIBUTES){
+        if(!ReadText(path,selection,16384)||!ModpackSelection(selection,library.selected,true))return Fail(L"Cannot read the custom setup's selection.");
+    }else{
+        const auto missing=GetLastError();
+        if(missing!=ERROR_FILE_NOT_FOUND&&missing!=ERROR_PATH_NOT_FOUND)return Fail(L"Cannot inspect the custom selection.");
+        for(const auto& p:library.catalog){
+            if(!library.imported.count(p.id)&&(p.kind==coop_packages::Kind::Assets||p.kind==coop_packages::Kind::Data||StandaloneNative(p.id)))
+                library.selected.push_back(p.id);
+        }
+    }
     if(validatePlan){coop_packages::Plan plan;coop_packages::Error error;if(!coop_packages::BuildPlan(library.catalog,library.selected,plan,error))return Fail(L"The custom library also needs attention: "+Wide(error.detail));}return true;
 }
 inline bool ModpackRecoveryAvailable(){
@@ -117,7 +136,7 @@ inline std::vector<std::string> MissingModpackRequirements(){
         for(const auto& required:p->requires){const auto found=std::find_if(state.catalog.begin(),state.catalog.end(),[&](const auto& item){return item.id==required.id&&item.version==required.version;});if(found!=state.catalog.end())pending.push_back(found->id);else if(unique.insert(required.id).second)missing.push_back(required.id+" "+required.version);}}
     return missing;
 }
-inline bool SaveActiveModpackSelection();
+inline bool SaveActiveModpackSelection(bool validatePlan=true);
 inline bool PersistCurrentModSelection(){
     if(!state.instanceId.empty())return SaveActiveModpackSelection();
     return ModpackAtomicText(state.root+L"\\mods\\_undercoop\\state\\selection.txt",ModpackSelectionText(state.selected));
@@ -141,20 +160,29 @@ inline bool UseModLibrary(){
         if(!ModpackAtomicText(marker,""))return Fail(L"Cannot clear the unavailable modpack choice. No selection was changed.");
         library.root.clear();ApplyModpack(std::move(library));return true;
     }
-    ModpackLoaded library;if(!ModpackReadCatalog(state.root+L"\\mods",library,true))return false;
-    if(!PersistCurrentModSelection())return Fail(L"Cannot preserve the current selection. Your active setup was not changed.");
-    std::string selection;const auto selectionPath=state.root+L"\\mods\\_undercoop\\state\\selection.txt";
-    if(GetFileAttributesW(selectionPath.c_str())!=INVALID_FILE_ATTRIBUTES){if(!ReadText(selectionPath,selection,16384)||!ModpackSelection(selection,library.selected))return Fail(L"Cannot read the custom setup's selection.");}
-    else if(GetLastError()!=ERROR_FILE_NOT_FOUND)return Fail(L"Cannot inspect the custom selection.");
-    else for(const auto& p:library.catalog)if(p.kind==coop_packages::Kind::Assets||p.kind==coop_packages::Kind::Data||StandaloneNative(p.id))library.selected.push_back(p.id);
+    ModpackLoaded library;
+    if(!ReadCustomModSetup(library))return false;
+    // Preserve the named selection even when a dependency needs attention.
+    // Play still requires a valid build plan. Switching setups does not.
+    if(!SaveActiveModpackSelection(false))return Fail(L"Cannot preserve the modpack's selection. It is still active.");
     if(!ModpackAtomicText(state.root+L"\\mods\\_undercoop\\state\\active-modpack.txt",""))return Fail(L"Cannot save the custom setup choice.");
     library.root.clear();ApplyModpack(std::move(library));return true;
 }
-inline bool SaveActiveModpackSelection(){
-    if(state.instanceId.empty())return false;coop_packages::Plan plan;coop_packages::Error why;
-    if(!coop_packages::BuildPlan(state.catalog,state.selected,plan,why))return false;
+inline bool SaveActiveModpackSelection(bool validatePlan){
+    if(state.instanceId.empty())return false;
+    const auto selection=ModpackSelectionText(state.selected);
+    if(validatePlan){
+        coop_packages::Plan plan;coop_packages::Error why;
+        if(!coop_packages::BuildPlan(state.catalog,state.selected,plan,why))return false;
+    }else{
+        std::vector<std::string> selected;
+        if(!ModpackSelection(selection,selected))return false;
+        for(const auto& id:selected){
+            if(std::none_of(state.catalog.begin(),state.catalog.end(),[&](const auto& p){return p.id==id;}))return false;
+        }
+    }
     const auto directory=state.packageRoot.substr(0,state.packageRoot.find_last_of(L'\\'));
-    return ModpackAtomicText(directory+L"\\selection.txt",ModpackSelectionText(state.selected));
+    return ModpackAtomicText(directory+L"\\selection.txt",selection);
 }
 struct ModpackCopyBudget{uint64_t bytes=0;size_t files=0;const std::atomic<bool>* cancel=nullptr;};
 inline bool CopyModpackTree(const std::wstring& source,const std::wstring& target,ModpackCopyBudget& budget,unsigned depth=0){

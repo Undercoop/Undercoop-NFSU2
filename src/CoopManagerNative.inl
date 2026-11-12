@@ -28,10 +28,10 @@ inline bool ManagedConfigChanged(const std::wstring& root,const std::string& pat
     if(!Equal(root,state.root))return false;
     for(const auto& watch:state.watches){
         if(path!=watch.relative&&watch.relative.compare(0,path.size()+1,path+"/")!=0)continue;
-        coop_mod_scan::Sha256 sha;coop_mods::Entry current;uint64_t bytes=0;std::string error;
-        if(!sha.algorithm||!coop_mod_scan::HashFile({watch.physical,watch.expected.path},sha,current,bytes,error)||
+        coop_mod_scan::Sha256 sha;coop_mods::Entry current;uint64_t bytes=0;std::string error;DWORD readError=ERROR_SUCCESS;
+        if(!sha.algorithm||!coop_mod_scan::HashFile({watch.physical,watch.expected.path,true},sha,current,bytes,error,&readError)||
            current.hash!=watch.expected.hash||current.size!=watch.expected.size){
-            change.path=watch.relative;change.reason=error.empty()?"managed component shared settings changed":error;change.error=GetLastError();return true;
+            change.path=watch.relative;change.reason=error.empty()?"managed component shared settings changed":error;change.error=readError;return true;
         }
     }
     // Directory notifications reach this callback before mods-private output

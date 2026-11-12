@@ -10,7 +10,7 @@ struct UiRect{
     float x=0,y=0,w=0,h=0;
     bool Contains(float px,float py)const{return px>=x&&py>=y&&px<x+w&&py<y+h;}
 };
-enum class UiAction{None,Tab,Package,Approve,Play,Manage,Minimize,Maximize,Close,IniMod,IniFile,IniRow,IniSave,IniDiscard,IniReload,IniAll,IniGroup,ImportPick,ImportFolder,ImportInstall,ImportCancel,ImportDownloads,ImportConsent,ImportRepair,ImportPackDetails,PackImport,PackCreate,PackConfirm,PackCancel,PackActivate,PackEdit,PackToggle,PackSave,PackLibrary,UndercoopCategory,UndercoopRole,UndercoopToggle,UndercoopShow,UndercoopOpacity,UndercoopSave,UndercoopDiscard,UndercoopReload,
+enum class UiAction{None,Tab,Package,Approve,Play,Manage,Minimize,Maximize,Close,IniMod,IniFile,IniRow,IniSave,IniDiscard,IniReload,IniAll,IniGroup,ImportPick,ImportFolder,ImportInstall,ImportCancel,ImportDownloads,ImportConsent,ImportRepair,ImportPackDetails,PackImport,PackCreate,PackConfirm,PackCancel,PackActivate,PackDeactivate,PackEdit,PackToggle,PackSave,PackLibrary,UndercoopCategory,UndercoopRole,UndercoopToggle,UndercoopShow,UndercoopOpacity,UndercoopSave,UndercoopDiscard,UndercoopReload,
     NoticeToggle,NoticeClose,NoticeAcknowledge,NoticeBody,DeveloperSignIn,DeveloperSubmit,DeveloperSignOut,DeveloperBack,
     BackupAuto,BackupSelect,BackupPage,CareerImportPick,CareerImportSelect,CareerImportPage};
 struct UiHit{

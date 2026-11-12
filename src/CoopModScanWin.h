@@ -90,9 +90,9 @@ inline bool Gather(const std::wstring& root,const std::wstring& relative,std::ve
     if(okay&&GetLastError()!=ERROR_NO_MORE_FILES){error="directory enumeration failed";okay=false;}
     FindClose(find);return okay;
 }
-inline bool HashFile(const File& file,const Sha256& sha,coop_mods::Entry& entry,uint64_t& bytes,std::string& error,DWORD* openError=nullptr) {
+inline bool HashFileOnce(const File& file,const Sha256& sha,coop_mods::Entry& entry,uint64_t& bytes,std::string& error,DWORD& openError) {
     const auto physical=!file.direct&&effectivePath?effectivePath(file.absolute):file.absolute;
-    if(openError)*openError=ERROR_SUCCESS;
+    openError=ERROR_SUCCESS;
     // A loader can redirect Win32 calls even for a "direct" inventory entry.
     // Read physical package/loose duplicates through the existing read-only
     // native file adapter so virtual listings cannot impersonate loose files.
@@ -101,7 +101,7 @@ inline bool HashFile(const File& file,const Sha256& sha,coop_mods::Entry& entry,
         CreateFileW(physical.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,
             FILE_ATTRIBUTE_NORMAL|FILE_FLAG_SEQUENTIAL_SCAN|FILE_FLAG_OPEN_REPARSE_POINT,nullptr);
     if(handle==INVALID_HANDLE_VALUE){const DWORD code=file.direct?nativeError:GetLastError();
-        if(openError)*openError=code;
+        openError=code;
         error="cannot read "+file.relative+" (Windows error "+std::to_string(code)+")";
         SetLastError(code);return false;}
     BY_HANDLE_FILE_INFORMATION before{},after{};BCRYPT_HASH_HANDLE hash=nullptr;
@@ -135,6 +135,26 @@ inline bool HashFile(const File& file,const Sha256& sha,coop_mods::Entry& entry,
     if(hash)BCryptDestroyHash(hash);
     if(!okay){error="file changed or could not be hashed: "+file.relative;return false;}
     bytes+=length;return true;
+}
+inline bool HashFile(const File& file,const Sha256& sha,coop_mods::Entry& entry,uint64_t& bytes,std::string& error,DWORD* openError=nullptr) {
+    const bool writableIni=coop_mods::Extension(file.relative)==".ini";
+    constexpr DWORD retryDelays[]{25,50,75,100,125,125,125,125};
+    DWORD failure=ERROR_SUCCESS;
+    for(size_t attempt=0;;++attempt){
+        if(HashFileOnce(file,sha,entry,bytes,error,failure)){
+            error.clear();
+            if(openError)*openError=ERROR_SUCCESS;
+            return true;
+        }
+        const bool temporarilyBusy=failure==ERROR_SHARING_VIOLATION||failure==ERROR_LOCK_VIOLATION;
+        if(!writableIni||!temporarilyBusy||attempt>=std::size(retryDelays))break;
+        // Keep the read-only share mode. Waiting for the writer to release
+        // the file allows a stable hash, including real shared option edits.
+        Sleep(retryDelays[attempt]);
+    }
+    if(openError)*openError=failure;
+    if(failure!=ERROR_SUCCESS)SetLastError(failure);
+    return false;
 }
 inline bool LooseFileAgrees(File loose,File selected,const Sha256& sha,std::string& error){
     if(selected.overlay||loose.absolute==selected.absolute)return true;
