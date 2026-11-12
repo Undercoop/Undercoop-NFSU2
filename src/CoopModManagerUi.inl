@@ -10,7 +10,7 @@ struct UiRect{
     float x=0,y=0,w=0,h=0;
     bool Contains(float px,float py)const{return px>=x&&py>=y&&px<x+w&&py<y+h;}
 };
-enum class UiAction{None,Tab,Package,Approve,Play,Manage,Minimize,Maximize,Close,IniMod,IniFile,IniRow,IniSave,IniDiscard,IniReload,IniAll,IniGroup,ImportPick,ImportFolder,ImportInstall,ImportCancel,ImportDownloads,ImportConsent,ImportRepair,PackCreate,PackConfirm,PackCancel,PackActivate,PackEdit,PackToggle,PackSave,PackLibrary,UndercoopCategory,UndercoopRole,UndercoopToggle,UndercoopShow,UndercoopOpacity,UndercoopSave,UndercoopDiscard,UndercoopReload,
+enum class UiAction{None,Tab,Package,Approve,Play,Manage,Minimize,Maximize,Close,IniMod,IniFile,IniRow,IniSave,IniDiscard,IniReload,IniAll,IniGroup,ImportPick,ImportFolder,ImportInstall,ImportCancel,ImportDownloads,ImportConsent,ImportRepair,ImportPackDetails,PackImport,PackCreate,PackConfirm,PackCancel,PackActivate,PackEdit,PackToggle,PackSave,PackLibrary,UndercoopCategory,UndercoopRole,UndercoopToggle,UndercoopShow,UndercoopOpacity,UndercoopSave,UndercoopDiscard,UndercoopReload,
     NoticeToggle,NoticeClose,NoticeAcknowledge,NoticeBody,DeveloperSignIn,DeveloperSubmit,DeveloperSignOut,DeveloperBack,
     BackupAuto,BackupSelect,BackupPage,CareerImportPick,CareerImportSelect,CareerImportPage};
 struct UiHit{
@@ -147,6 +147,7 @@ inline UiEffect DispatchUi(View& view,UiHit hit){
     if(DispatchModpack(view,hit))return UiEffect::Redraw;
     if(hit.action==UiAction::ImportPick){view.tab=5;SyncIniEditor(view);PickImport(view);return UiEffect::Redraw;}
     if(hit.action==UiAction::ImportFolder){view.tab=5;SyncIniEditor(view);PickImportFolder(view);return UiEffect::Redraw;}
+    if(hit.action==UiAction::ImportPackDetails){ShowImportPackDetails(view);return UiEffect::Redraw;}
     if(hit.action==UiAction::ImportInstall){BeginImport(view,ImportWork::Install);return UiEffect::Redraw;}
     if(hit.action==UiAction::ImportRepair){BeginImport(view,ImportWork::Repair);return UiEffect::Redraw;}
     if(hit.action==UiAction::ImportDownloads){view.imports.allowDownloads=!view.imports.allowDownloads;return UiEffect::Redraw;}
@@ -366,7 +367,7 @@ inline LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp)
     if(message==kImportComplete){ApplyUiEffect(*view,CompleteImportUi(*view));if(IsWindow(window))InvalidateRect(window,nullptr,FALSE);return 0;}
     if(message==WM_DROPFILES){const auto drop=reinterpret_cast<HDROP>(wp);wchar_t path[MAX_PATH]{};
         const bool one=DragQueryFileW(drop,0xffffffff,nullptr,0)==1&&DragQueryFileW(drop,0,nullptr,0)<MAX_PATH&&DragQueryFileW(drop,0,path,MAX_PATH)>0;DragFinish(drop);
-        if(!view->notice.open&&!view->busy&&one&&!IniDraftGuard(*view)&&!UndercoopDraftGuard(*view)){BeginImport(*view,ImportWork::Inspect,path);SyncLauncherEditors(*view);InvalidateRect(window,nullptr,FALSE);}return 0;}
+        if(!view->notice.open&&!view->busy&&one&&!IniDraftGuard(*view)&&!UndercoopDraftGuard(*view)){BeginImport(*view,view->tab==6?ImportWork::PackInspect:ImportWork::Inspect,path);SyncLauncherEditors(*view);InvalidateRect(window,nullptr,FALSE);}return 0;}
     if (message == kDeveloperSubmitMessage || message == kDeveloperBackMessage) {
         ApplyUiEffect(*view, DispatchUi(*view, {message == kDeveloperSubmitMessage ?
             UiAction::DeveloperSubmit : UiAction::DeveloperBack}));

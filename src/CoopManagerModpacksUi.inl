@@ -14,6 +14,7 @@ struct ModpackLayout{
     UiLayout base;explicit ModpackLayout(float w,float h):base(w,h){}
     UiRect Create()const{return {base.width-308,119,144,32};}
     UiRect Library()const{return {base.width-174,119,144,32};}
+    UiRect Import()const{return {base.width-332,119,146,32};}
     UiRect Card(size_t i)const{return {base.content,base.body+float(i)*90,base.ContentWidth(),78};}
     UiRect Activate(size_t i)const{const auto r=Card(i);return {r.x+r.w-194,r.y+26,104,30};}
     UiRect Edit(size_t i)const{const auto r=Card(i);return {r.x+r.w-78,r.y+26,62,30};}
@@ -60,11 +61,13 @@ template<class V> inline UiHit ModpackHitTest(const V& view,float x,float y,floa
     if(!p.editing.empty()){if(l.Save().Contains(x,y))return {UiAction::PackSave};if(l.Cancel().Contains(x,y))return {UiAction::PackCancel};
         for(size_t i=0;i<l.Members()&&p.first+i<p.choices.size();++i)if(l.Member(i).Contains(x,y))return {UiAction::PackToggle,p.first+i};return {};}
     if(l.Library().Contains(x,y))return {UiAction::PackLibrary};
+    if(l.Import().Contains(x,y))return {UiAction::PackImport};
     for(size_t i=0;i<l.Rows()&&p.first+i<p.packs.size();++i){if(l.Activate(i).Contains(x,y))return {UiAction::PackActivate,p.first+i};if(l.Edit(i).Contains(x,y))return {UiAction::PackEdit,p.first+i};}return {};
 }
 template<class V> inline bool DispatchModpack(V& view,UiHit hit){
     auto& p=view.modpacks;
     if(hit.action==UiAction::PackCreate){BeginModpackName(view);return true;}
+    if(hit.action==UiAction::PackImport){PickImportModpack(view);return true;}
     if(hit.action==UiAction::PackCancel){p.naming=false;p.editing.clear();p.message=L"Changes cancelled. Your current setup was not changed.";SyncModpackEditor(view);return true;}
     if(hit.action==UiAction::PackConfirm){std::wstring id;if(CreateModpack(p.name,id)){p.naming=false;p.message=L"Modpack created. Activate it to play with its private versions and settings.";RefreshModpacks(view);}else p.message=state.error;SyncModpackEditor(view);return true;}
     if(hit.action==UiAction::PackEdit){BeginModpackEdit(view,hit.index);return true;}
@@ -87,8 +90,8 @@ template<class V> inline void PaintModpacks(V& view,float width,float height){
             text(Wide(item.name),box.x+48,box.y+7,box.w-175,25,14,0xE5EAF3,UiFace::Bold);text(Wide(item.version),box.x+box.w-117,box.y+10,100,25,12);}
         button(L"Cancel",l.Cancel());button(L"Save modpack",l.Save(),true);return;
     }
-    button(L"Use custom setup",l.Library());const size_t max=p.packs.size()>l.Rows()?p.packs.size()-l.Rows():0;p.first=(std::min)(p.first,max);
-    if(p.packs.empty()){r.Box(l.base.content,l.base.body,cw,138,0x191B1F,8,0x2C3037);text(L"No modpacks yet",l.base.content+22,l.base.body+20,cw-44,30,21,0xE8EDF5,UiFace::Bold);text(L"Open My mods and choose Create modpack. Your original mod library stays separate.",l.base.content+22,l.base.body+65,cw-44,50,14,0xA6AFBD,UiFace::Regular,true);}
+    button(L"Use custom setup",l.Library());button(L"Import modpack",l.Import());const size_t max=p.packs.size()>l.Rows()?p.packs.size()-l.Rows():0;p.first=(std::min)(p.first,max);
+    if(p.packs.empty()){r.Box(l.base.content,l.base.body,cw,138,0x191B1F,8,0x2C3037);text(L"No modpacks yet",l.base.content+22,l.base.body+20,cw-44,30,21,0xE8EDF5,UiFace::Bold);text(L"Import a supported modpack ZIP, or create a snapshot from My mods. Imported packs remain inactive until you choose Activate.",l.base.content+22,l.base.body+65,cw-44,50,14,0xA6AFBD,UiFace::Regular,true);}
     for(size_t i=0;i<l.Rows()&&p.first+i<p.packs.size();++i){const auto& pack=p.packs[p.first+i];const auto box=l.Card(i);const bool active=pack.id==state.instanceId;r.Box(box.x,box.y,box.w,box.h,active?0x232B37:0x191B1F,8,active?0x5A6A83:0x2C3037);
         text(pack.name,box.x+18,box.y+10,box.w-225,26,17,0xE8EDF5,UiFace::Bold);text(std::to_wstring(pack.packages)+L" packages / "+std::to_wstring(pack.enabled)+L" enabled"+(active?L" / ACTIVE":L""),box.x+18,box.y+43,box.w-225,23,12);button(active?L"Active":L"Activate",l.Activate(i),!active);button(L"Edit",l.Edit(i));}
     text(state.instanceId.empty()?L"Current: Custom setup":L"Current: "+state.instanceName,l.base.content,l.base.footer-28,cw,23,12,0x9EADBF);

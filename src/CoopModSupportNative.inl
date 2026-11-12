@@ -5,10 +5,14 @@
 
 // Included after CoopNativeSession.inl. No native game calls on the scanner or
 // network thread. No asset downloading, installation or save mutation here.
+#include "CoopModConsent.h"
 namespace CoopModSupport {
 static SRWLOCK lock=SRWLOCK_INIT;
 static coop_mod_scan::Inventory inventory;
 static coop_mods::Exchange exchange;
+static coop_mod_consent::Consent consent;
+static bool remoteVerified=false,remoteRejected=false;
+static coop_mod_consent::Binding verifiedBinding{};
 static coop::Endpoint boundPeer{};static uint64_t boundSession=0;static uint32_t boundMembership=0;
 static std::atomic<bool> scanning{false},scanDone{false},invalidated{false},catalogReady{false};
 static std::atomic<bool> vehicleAssetsReady{false};
@@ -22,7 +26,7 @@ static bool started=false,reported=false;
 static std::wstring root;
 static std::string settings;
 static const char* Status() {
-    if(status.load()==2){const auto state=CoopSnapshot();if(state.joined&&!CoopConnectedTransportReady(state))
+    if(status.load()==2||status.load()==11){const auto state=CoopSnapshot();if(state.joined&&!CoopConnectedTransportReady(state))
         return gCoopTransportOpened.load()?"WAITING FOR GAMEPLAY CONNECTION - CHECK NETWORK PORTS":"GAMEPLAY NETWORK PORT UNAVAILABLE - CHECK CONSOLE (Z)";}
     if(invalidated.load())return "MOD FILES CHANGED - RESTART BOTH GAMES";
     if(scanDone.load()&&status.load()!=4&&!gCoopCareerHooksReady.load())return "NATIVE COOP HOOKS NOT READY - CHECK CONSOLE (Z)";
@@ -36,6 +40,9 @@ static const char* Status() {
     case 4:return "MOD CHECK FAILED - CHECK CONSOLE (Z)";
     case 5:return "CAR LOADER/CATALOG UNSUPPORTED - CHECK CONSOLE (Z)";
     case 7:return "TEAMMATE MOD CHECK FAILED - CHECK CONSOLE (Z)";
+    case 11:return "MOD PACK MISMATCH ACCEPTED - BOTH PLAYERS";
+    case 12:return "MOD PACK MISMATCH DECLINED - RECONNECT TO RETRY";
+    case 13:return "MISMATCH - WAITING FOR TEAMMATE APPROVAL";
     }return "CHECKING INSTALLED FILES...";
 }
 static void ReportFile(const std::string& text) {
@@ -143,20 +150,49 @@ static void Start() {
     settings="Undercoop=" UNDERCOOP_BUILD_VERSION "\nSaveDomain="+std::string(coop_build::kSaveDomain)+"\nRaceAI="+std::to_string(gCoopAIEnabled?1:0)+"\nWorldFleet="+
         std::to_string(gCoopFleetEnabled?1:0)+"\nCarCount="+std::to_string(CoopCarCatalogNative::Count())+
         "\nCarMapping="+std::to_string(CoopCarCatalogNative::Footprint())+"\n";
-#ifdef UNDERCOOP_MOD_MANAGER
-    settings+="ManagedPack="+CoopModManager::state.pack+"\n";
-#endif
+    // Effective runtime files already include the manager's selected mappings
+    // and native settings. Archive/recipe identity is local bookkeeping, not a
+    // gameplay difference between a direct installation and the same overlay.
     scanning.store(true);HANDLE worker=CreateThread(nullptr,0,ScanWorker,nullptr,0,nullptr);
     if(worker)CloseHandle(worker);else{scanning.store(false);status.store(4);}
 }
 static void ResetPeer() {
     AcquireSRWLockExclusive(&lock);exchange={};boundSession=0;boundMembership=0;boundPeer={};reported=false;peerFailed.store(false);
-    if(status.load()==2||status.load()==3)status.store(1);ReleaseSRWLockExclusive(&lock);
+    consent.Reset();remoteVerified=remoteRejected=false;verifiedBinding={};
+    if(status.load()==2||status.load()==3||status.load()==11||status.load()==12||status.load()==13)status.store(1);ReleaseSRWLockExclusive(&lock);
+}
+static coop_mod_consent::Binding CurrentBinding(const coop::SessionSnapshot& state) {
+    coop_mod_consent::Binding value;
+    if(state.sessionId!=boundSession||state.membershipNonce!=boundMembership||state.peer!=boundPeer||!exchange.Mismatch())return value;
+    value.session=boundSession;value.membership=boundMembership;value.peer=boundPeer;
+    value.localToken=exchange.LocalToken();value.peerToken=exchange.PeerToken();
+    value.localBytes=uint32_t(inventory.blob.size());value.peerBytes=exchange.PeerTotal();
+    value.localHash=inventory.hash;value.peerHash=exchange.PeerHash();return value;
+}
+static void UpdateConsent(const coop::SessionSnapshot& state) {
+    const auto binding=CurrentBinding(state);
+    if(binding!=consent.Identity()){
+        consent.Bind(binding);remoteVerified=remoteRejected=false;verifiedBinding={};reported=false;
+    }
+    consent.SetEligible(state.joined&&state.fresh&&scanDone.load()&&status.load()!=4&&status.load()!=5&&binding.Valid()&&remoteVerified&&!remoteRejected&&
+        verifiedBinding==binding&&inventory.Ready()&&!invalidated.load()&&!peerFailed.load()&&
+        catalogReady.load()&&vehicleAssetsReady.load()&&gCoopCareerHooksReady.load()&&
+        exchange.RuntimeReady()&&CoopConnectedTransportReady(state));
+}
+static unsigned ExchangeStatus() {
+    if(peerFailed.load()||remoteRejected)return 7;
+    if(exchange.Ready())return 2;
+    if(consent.Ready())return 11;
+    if(consent.Declined())return 12;
+    if(consent.LocalAccepted())return 13;
+    return exchange.Mismatch()?3:1;
 }
 static bool Ready(const coop::SessionSnapshot& state) {
-    if(!state.joined||!state.fresh||invalidated.load()||!catalogReady.load()||!vehicleAssetsReady.load()||peerFailed.load()||!gCoopCareerHooksReady.load())return false;
+    if(!state.joined||!state.fresh||!scanDone.load()||status.load()==4||status.load()==5||invalidated.load()||!catalogReady.load()||!vehicleAssetsReady.load()||peerFailed.load()||!gCoopCareerHooksReady.load())return false;
     AcquireSRWLockShared(&lock);
-    const bool ready=state.sessionId==boundSession&&state.peer==boundPeer&&state.membershipNonce==boundMembership&&exchange.Ready()&&inventory.Ready();
+    const bool ready=state.sessionId==boundSession&&state.peer==boundPeer&&state.membershipNonce==boundMembership&&inventory.Ready()&&
+        (exchange.Ready()||(exchange.RuntimeReady()&&!remoteRejected&&remoteVerified&&
+            verifiedBinding==CurrentBinding(state)&&consent.Ready()));
     ReleaseSRWLockShared(&lock);return ready;
 }
 static void TickNetwork(DWORD now) {
@@ -173,7 +209,8 @@ static void TickNetwork(DWORD now) {
     }
     if(!scanDone.load())return;
     std::array<coop_mods::Packet,4> output{};size_t count=0;std::vector<uint8_t> remote;coop_mods::Hash expected{};
-    std::vector<coop_mods::Entry> local;
+    std::vector<coop_mods::Entry> local;coop_mod_consent::Binding verifying;
+    coop_mod_consent::Packet consentPacket;bool sendConsent=false;
     AcquireSRWLockExclusive(&lock);
     if(inventory.Ready()) {
         if(boundSession!=state.sessionId||boundPeer!=state.peer||boundMembership!=state.membershipNonce||!exchange.Bound()) {
@@ -184,18 +221,29 @@ static void TickNetwork(DWORD now) {
         }
         exchange.SetRuntimeReady(catalogReady.load()&&vehicleAssetsReady.load()&&gCoopCareerHooksReady.load());
         count=exchange.Tick(now,output);
-        status.store(peerFailed.load()?7:exchange.Ready()?2:exchange.Mismatch()?3:1);
-        if(!reported&&exchange.PopRemote(remote,expected)){reported=true;local=inventory.entries;}
+        UpdateConsent(state);
+        sendConsent=consent.Tick(now,consentPacket);
+        status.store(ExchangeStatus());
+        if(!reported&&exchange.PopRemote(remote,expected)){reported=true;local=inventory.entries;verifying=CurrentBinding(state);}
     }
     ReleaseSRWLockExclusive(&lock);
     for(size_t i=0;i<count;++i)SendSessionBytes(&output[i],sizeof(output[i]),state.peer);
+    if(sendConsent)SendSessionBytes(&consentPacket,sizeof(consentPacket),state.peer);
     if(remote.empty())return;
     coop_mod_scan::Sha256 sha;coop_mods::Hash actual{};std::vector<coop_mods::Entry> peer;
     if(!sha.Bytes(remote.data(),remote.size(),actual)||actual!=expected||!coop_mods::Decode(remote,peer)) {
+        AcquireSRWLockExclusive(&lock);
+        if(verifying==CurrentBinding(state)){remoteRejected=true;remoteVerified=false;consent.SetEligible(false);status.store(7);}
+        ReleaseSRWLockExclusive(&lock);
         LogMessage("[MODS] Peer inventory hash/structure rejected. No file paths were opened and no career start authorized.\r\n");
         CoopAnnouncements::Post("Peer mod list could not be verified. Reconnect both players.");return;
     }
     const auto differences=coop_mods::Compare(local,peer);
+    AcquireSRWLockExclusive(&lock);
+    if(verifying.Valid()&&verifying==CurrentBinding(state)){
+        remoteVerified=true;verifiedBinding=verifying;UpdateConsent(state);status.store(ExchangeStatus());
+    }
+    ReleaseSRWLockExclusive(&lock);
     std::string report="Undercoop " UNDERCOOP_BUILD_VERSION " - mod pack mismatch\r\nCompared with connected teammate. Nothing was installed, removed or received except file metadata.\r\n";
     unsigned shown=0;
     for(const auto& difference:differences) {
@@ -206,15 +254,25 @@ static void TickNetwork(DWORD now) {
         if(shown<64)LogMessage(("[MODS] "+line+"\r\n").c_str());
         if(shown++<6)CoopAnnouncements::Post(line.c_str());
     }
-    report+="\r\nMatch the actual installed game/mod files and gameplay settings, then restart both games.\r\n"
+    report+="\r\nRecommended: match the actual installed game/mod files and gameplay settings, then restart both games.\r\n"
+        "Optional: both players may approve this exact verified mismatch in console (Z), F5 accept / F6 decline.\r\n"
+        "An accepted mismatch remains a mismatch; incompatible mods can crash or desynchronize.\r\n"
         "IPs, ports, names, saves and known display/multi-instance options are personal.\r\n"
         "Matching files does not certify arbitrary executable mods as compatible.\r\n";
     ReportFile(report);
-    LogMessage(("[MODS] "+std::to_string(differences.size())+" differences; full report scripts/NFSU2Coop-Mods.txt. Career start blocked.\r\n").c_str());
-    CoopAnnouncements::Post("Career start blocked. Full differences: scripts/NFSU2Coop-Mods.txt");
+    LogMessage(("[MODS] "+std::to_string(differences.size())+" differences; full report scripts/NFSU2Coop-Mods.txt. Waiting for matching files or BOTH explicit mismatch approvals.\r\n").c_str());
+    CoopAnnouncements::Post("Different mods can crash or desynchronize. Both players must approve in console (Z): F5 accept / F6 decline.");
 }
 static bool Receive(const char* data,int bytes,const sockaddr_in& sender,DWORD now) {
-    uint32_t magic=0;if(bytes<4)return false;std::memcpy(&magic,data,4);if(magic!=coop_mods::kMagic)return false;
+    uint32_t magic=0;if(!data||bytes<4)return false;std::memcpy(&magic,data,4);if(magic!=coop_mods::kMagic)return false;
+    if(bytes==sizeof(coop_mod_consent::Packet)){
+        if(!IsJoinedCoopSender(sender)||invalidated.load())return true;
+        const auto state=CoopSnapshot();coop_mod_consent::Packet packet{};std::memcpy(&packet,data,sizeof(packet));
+        if(!state.joined||!state.fresh||!coop_mod_consent::Valid(packet))return true;
+        AcquireSRWLockExclusive(&lock);UpdateConsent(state);
+        if(consent.Receive(packet,{sender.sin_addr.s_addr,ntohs(sender.sin_port)}))status.store(ExchangeStatus());
+        ReleaseSRWLockExclusive(&lock);return true;
+    }
     if(bytes!=sizeof(coop_mods::Packet)||!IsJoinedCoopSender(sender)||invalidated.load())return true;
     const auto state=CoopSnapshot();coop_mods::Packet packet{},ack{};std::memcpy(&packet,data,sizeof(packet));
     if(!coop_mods::Valid(packet)||packet.session!=state.sessionId)return true;
@@ -239,13 +297,22 @@ static void TickUi(DWORD flow) {
     }
     TickCoopStockCatalog(flow);TraceCoopAddonMenus(flow);
     const auto state=CoopSnapshot();if(!state.joined||!state.fresh)return;
-    static unsigned previous=UINT32_MAX;
+    static unsigned previous=UINT32_MAX;static bool previousPrompt=false;
+    static uint64_t previousSession=0;static uint32_t previousMembership=0;
+    if(previousSession!=state.sessionId||previousMembership!=state.membershipNonce){previous=UINT32_MAX;previousPrompt=false;
+        previousSession=state.sessionId;previousMembership=state.membershipNonce;}
+    bool prompt=false;AcquireSRWLockShared(&lock);prompt=consent.CanDecide();ReleaseSRWLockShared(&lock);
     const unsigned current=invalidated.load()?6:scanDone.load()&&!gCoopCareerHooksReady.load()?8:
         scanDone.load()&&!vehicleAssetsReady.load()?9:scanDone.load()&&!catalogReady.load()?5:
-        status.load()==2&&!CoopConnectedTransportReady(state)?10:status.load();
-    if(previous==current)return;previous=current;
+        (status.load()==2||status.load()==11)&&!CoopConnectedTransportReady(state)?10:status.load();
+    if(previous==current&&previousPrompt==prompt)return;previous=current;previousPrompt=prompt;
     if(current==2)CoopAnnouncements::Post("Mod pack matched. Both players can start the career.");
-    else if(current==3)CoopAnnouncements::Post("Mod pack mismatch. Comparing missing/different files...");
+    else if(current==3)CoopAnnouncements::Post(prompt?
+        "Verified mismatch. Open console (Z): F5 accept / F6 decline. BOTH players must approve; crashes/desync remain possible.":
+        "Mod pack mismatch. Verifying missing/different files and teammate approval handshake...");
+    else if(current==11)CoopAnnouncements::Post("Both players accepted the mod mismatch. Career start enabled; files are still different.");
+    else if(current==12)CoopAnnouncements::Post("Mod mismatch declined. Career start blocked for this connection; reconnect to reconsider.");
+    else if(current==13)CoopAnnouncements::Post("You accepted this mod mismatch. Waiting for your teammate's approval and confirmation.");
     else if(current==4)CoopAnnouncements::Post("Mod scan failed. Check scripts/NFSU2Coop-Mods.txt. Career start is blocked.");
     else if(current==10)CoopAnnouncements::Post("Waiting for the gameplay connection. Both computers must allow their configured UDP port and that port + 1000.");
     else if(current==5) {
@@ -260,6 +327,23 @@ static void TickUi(DWORD flow) {
     }
     else CoopAnnouncements::Post("Checking installed mods. Career start unlocks when both packs match.");
 }
+static bool DecisionKey(unsigned key) {
+    if((key!=VK_F5&&key!=VK_F6)||!CoopAnnouncements::Expanded())return false;
+    const auto state=CoopSnapshot();
+    if(!state.joined||!state.fresh||(state.phase!=coop::Phase::Lobby&&state.phase!=coop::Phase::CareerSelection))return false;
+    bool relevant=false,changed=false;
+    AcquireSRWLockExclusive(&lock);UpdateConsent(state);
+    relevant=consent.Eligible()&&!consent.Ready();
+    if(relevant)changed=consent.Decide(key==VK_F5);
+    if(changed)status.store(ExchangeStatus());ReleaseSRWLockExclusive(&lock);
+    if(changed){
+        LogMessage(key==VK_F5?"[MODS_CONSENT] Local explicit mismatch approval recorded for current membership/inventories.\r\n":
+            "[MODS_CONSENT] Local mismatch declined for current membership/inventories.\r\n");
+        CoopAnnouncements::Post(key==VK_F5?"Mismatch approval sent. Your teammate must also approve this exact comparison.":
+            "Mismatch declined. Career start remains blocked for this connection.");
+    }
+    return relevant;
+}
 }
 bool CoopModsReady(const coop::SessionSnapshot& state){return CoopConnectedTransportReady(state)&&CoopModSupport::Ready(state);}
 bool RefreshCoopVehicleAssetAdaptersReady(){return CoopModSupport::RefreshVehicleAssets();}
@@ -269,3 +353,4 @@ void TickCoopModNetwork(DWORD now){CoopModSupport::TickNetwork(now);}
 bool ReceiveCoopModPacket(const char* data,int bytes,const sockaddr_in& sender,DWORD now){return CoopModSupport::Receive(data,bytes,sender,now);}
 void TickCoopModUi(DWORD flow){CoopModSupport::TickUi(flow);}
 void StartCoopModScan(){CoopModSupport::Start();}
+bool HandleCoopModDecisionKey(unsigned key){return CoopModSupport::DecisionKey(key);}

@@ -51,7 +51,7 @@ inline bool IsPrivateDirectory(const std::string& name) {
 #endif
     static const char* excluded[]={".git",".vs","src","docs","scratch","research","backups",
         "sdata.backup","decompile_dump","logs","screenshots","cache",
-        "saves","profiles","coop-saves","save_import","__pycache__"};
+        "saves","savegames","profiles","coop-saves","save_import","__pycache__"};
     for(const char* item:excluded)if(name==item)return true;return false;
 }
 inline bool IncludeFile(const std::string& path) {
@@ -71,7 +71,7 @@ inline bool IncludeFile(const std::string& path) {
     // PC MEMCARD contains native locale resources, not the AppData careers.
     // Keep possible card/profile payloads private; compare its .loc resources.
     if(first=="memcard"&&ext!=".loc")return false;
-    if(ext==".log"||ext==".tmp"||ext==".bak"||ext==".pdb"||ext==".obj"||ext==".exp"||ext==".lib"||
+    if(ext==".log"||ext==".tmp"||ext==".bak"||ext==".bacc"||ext==".url"||ext==".pdb"||ext==".obj"||ext==".exp"||ext==".lib"||
         ext==".cpp"||ext==".h"||ext==".inl"||ext==".md"||ext==".ps1"||ext==".bat"||
         ext==".previous"||ext==".journal")return false;
     if(first=="scripts") {
@@ -224,6 +224,11 @@ public:
     bool Ready()const{return Bound()&&localRuntimeReady_&&peerRuntimeReady_&&peerToken_&&peerEcho_==token_&&peerHash_==localHash_&&peerTotal_==local_.size();}
     bool Mismatch()const{return Bound()&&peerToken_&&(peerHash_!=localHash_||peerTotal_!=local_.size());}
     bool PeerKnown()const{return peerToken_!=0;}
+    uint32_t LocalToken()const{return token_;}
+    uint32_t PeerToken()const{return peerToken_;}
+    uint32_t PeerTotal()const{return peerTotal_;}
+    const Hash& PeerHash()const{return peerHash_;}
+    bool RuntimeReady()const{return Bound()&&localRuntimeReady_&&peerRuntimeReady_&&peerToken_&&peerEcho_==token_;}
     size_t Received()const{return receivedCount_;}
     bool PopRemote(std::vector<uint8_t>& blob,Hash& hash) {
         if(taken_||remote_.empty()||receivedCount_!=received_.size())return false;

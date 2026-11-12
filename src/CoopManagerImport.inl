@@ -7,11 +7,13 @@
 inline bool EnsureArchiveEngine(const std::wstring&,std::wstring&);
 struct ImportItem{size_t index=0;std::string source,destination,hash;uint64_t bytes=0;bool module=false,config=false;std::string generated;};
 struct ImportFolderFile{std::wstring relative;std::string path,hash;uint64_t bytes=0,fileId=0;uint32_t volume=0;};
+struct PackArchivePlan;
 struct ImportPlan{
     std::wstring archive;std::string hash,manifestText;coop_packages::Manifest package;coop_import::Receipt native;
     std::vector<ImportItem> items;std::vector<std::wstring> notes;std::vector<std::string> binaryChoices;uint64_t bytes=0;bool code=false,binary=false,runtimeMissing=false;
     bool folder=false,adoptFolder=false;
     std::vector<ImportFolderFile> folderFiles;
+    std::shared_ptr<PackArchivePlan> pack;
 };
 inline bool InspectBinaryArchive(coop_archive::Archive&,const std::wstring&,ImportPlan&,std::wstring&,const std::atomic<bool>*,const std::string&);
 inline std::string ImportHash(const std::string& bytes){coop_mod_scan::Sha256 sha;coop_mods::Hash h{};return sha.Bytes(bytes.data(),bytes.size(),h)?coop_mod_scan::Hex(h):"";}
@@ -29,6 +31,7 @@ inline std::string ImportManifest(const coop_packages::Manifest& p){
     if(!p.files.empty()){text+="[Files]\n";for(const auto& f:p.files)text+=f.destination+"="+f.source+"\n";}
     if(!p.requires.empty()){text+="[Requires]\n";for(const auto& r:p.requires)text+=r.id+"="+r.version+"\n";}return text;
 }
+#include "CoopManagerPackImport.inl"
 inline bool ImportReadArchive(const std::wstring& path,std::string& bytes,std::wstring& error){
     if(!ReadText(path,bytes,128*1024*1024)){error=L"The archive is linked, busy, unreadable or larger than 128 MiB.";return false;}return true;
 }

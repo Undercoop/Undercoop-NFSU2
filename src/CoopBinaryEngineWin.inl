@@ -172,7 +172,18 @@ inline bool PrepareUnlimiterProfiles(PreparedActivation& staged,std::string& rec
     // mods folder. Never add files to the installed dependency or stock scripts.
     auto native=std::find_if(staged.natives.begin(),staged.natives.end(),[](const auto& n){const auto slash=n.path.find_last_of(L'\\');return Equal(n.path.substr(slash+1),L"NFSU2Unlimiter.asi");});if(native==staged.natives.end())return true;
     const auto source=PackageDirectory("nfsu2-unlimiter");std::map<std::string,std::string> files;
-    for(const auto* name:{"nfsu2unlimiter.asi","nfsu2unlimitersettings.ini","unlimiterdata/_fngfixes.ini","unlimiterdata/_general.ini","unlimiterdata/_rimbrands.ini","unlimiterdata/bmwm3gtr.ini"}){std::string bytes;if(!ReadText(source+L"\\"+Disk(Wide(name)),bytes,4*1024*1024))return Fail(L"Cannot read the verified Unlimiter profile base.");files.emplace(name,std::move(bytes));}
+    const auto imported=state.imported.find("nfsu2-unlimiter");
+    if(imported!=state.imported.end()){
+        // A reviewed whole-pack already owns a complete, module-relative
+        // Unlimiter profile tree. Retain its technical and stock-car profiles.
+        for(const auto& f:imported->second.files){
+            if(f.destination!="scripts/nfsu2unlimiter.asi"&&f.destination!="scripts/nfsu2unlimitersettings.ini"&&f.destination.rfind("scripts/unlimiterdata/",0)!=0)continue;
+            const auto name=f.destination.substr(8);std::string bytes;
+            if(!ReadText(source+L"\\"+Disk(Wide(f.source)),bytes,4*1024*1024))return Fail(L"Cannot read the imported Unlimiter profile base.");files.emplace(name,std::move(bytes));
+        }
+        for(const auto* required:{"nfsu2unlimiter.asi","nfsu2unlimitersettings.ini","unlimiterdata/_fngfixes.ini","unlimiterdata/_general.ini","unlimiterdata/_rimbrands.ini"})
+            if(!files.count(required))return Fail(L"The imported Unlimiter profile tree is incomplete.");
+    }else for(const auto* name:{"nfsu2unlimiter.asi","nfsu2unlimitersettings.ini","unlimiterdata/_fngfixes.ini","unlimiterdata/_general.ini","unlimiterdata/_rimbrands.ini","unlimiterdata/bmwm3gtr.ini"}){std::string bytes;if(!ReadText(source+L"\\"+Disk(Wide(name)),bytes,4*1024*1024))return Fail(L"Cannot read the verified Unlimiter profile base.");files.emplace(name,std::move(bytes));}
     bool changed=false;for(const auto& mapping:staged.mappings){const std::string prefix="scripts/unlimiterdata/";if(mapping.relative.rfind(prefix,0)!=0)continue;const auto name=mapping.relative.substr(prefix.size());if(name.find('/')!=std::string::npos||coop_packages::detail::Extension(name)!=".ini")return Fail(L"A mod tried to replace Unlimiter's protected technical profiles.");
         std::string bytes;if(!ReadText(mapping.physical,bytes,256*1024))return Fail(L"Cannot read a selected addon profile.");const auto key="unlimiterdata/"+name;auto old=files.find(key);if(old==files.end()||old->second!=bytes){if(name.front()=='_')return Fail(L"A mod tried to replace Unlimiter's protected technical profiles.");files[key]=std::move(bytes);changed=true;}}
     if(!changed)return true;std::string identity="Undercoop Unlimiter profile set 1\n";for(const auto& file:files)identity+=file.first+"="+ImportHash(file.second)+"\n";

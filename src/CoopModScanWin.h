@@ -55,6 +55,7 @@ struct File {
     std::wstring absolute;std::string relative;
     bool direct=false; // Already a verified physical package path, not a game-relative lookup.
     bool overlay=false; // Selected resource overlays intentionally replace stock resources.
+    bool inventory=true; // A loader alias of an already counted effective file.
 };
 inline bool (*additionalFiles)(const std::wstring&,std::vector<File>&,std::string&)=nullptr;
 struct Inventory {
@@ -175,6 +176,7 @@ inline bool GatherRuntime(const std::wstring& root,const std::wstring& relative,
     for(auto& f:extra){
         if(!coop_mods::SafePath(f.relative)){error="unsafe managed inventory destination";return false;}
         if(!coop_mods::IncludeFile(f.relative)||!subtree.empty()&&f.relative.rfind(subtree,0)!=0)continue;
+        if(!f.inventory){merged.erase(f.relative);continue;}
         f.direct=true;const auto old=merged.find(f.relative);
         // A real loose native/config duplicate must agree even when the
         // loader normally redirects its Win32 read to the selected package.

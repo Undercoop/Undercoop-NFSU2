@@ -148,7 +148,8 @@ inline bool Asset(const std::string& path) {
     static const char* allowed[]={".bin",".tpk",".dds",".ini",".txt",".loc",
         ".bmp",".png",".jpg",".jpeg",".fng",".dat",".viv",".geo",".wav",
         ".mp3",".ogg",".big",".lzc",".bng",".xml",".json",".cfg",".msh",
-        ".vp6",".fnt",".ttf",".otf",".ico",".pal",".bik",".abk"};
+        ".vp6",".fnt",".ttf",".otf",".ico",".pal",".bik",".abk",
+        ".gin",".csi",".bun",".mxb",".fx",".fxh"};
     for(const char* item:allowed) if(ext==item) return true;
     return false;
 }
@@ -171,14 +172,14 @@ inline bool CanonicalPath(const std::string& input, std::string& out,
     out.clear();
     if(input.empty()||input.size()>limits.pathBytes) return false;
     std::string candidate=detail::Lower(input);
-    for(char& c:candidate) { if(c=='\\') c='/'; if(c!='/'&&!detail::TokenChar(c)) return false; }
+    for(char& c:candidate) { if(c=='\\') c='/'; if(c!='/'&&c!=' '&&!detail::TokenChar(c)) return false; }
     if(candidate.front()=='/'||candidate.back()=='/') return false;
     size_t begin=0;
     for(size_t at=0;at<=candidate.size();++at) {
         if(at<candidate.size()&&candidate[at]!='/') continue;
         const auto component=candidate.substr(begin,at-begin);
         if(component.empty()||component=="."||component==".."||component.front()=='.'||
-            component.back()=='.'||detail::Device(component)) return false;
+            component.front()==' '||component.back()=='.'||component.back()==' '||detail::Device(component)) return false;
         begin=at+1;
     }
     out=std::move(candidate); return true;

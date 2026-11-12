@@ -12,6 +12,7 @@
 #include "CoopBuildVersion.h"
 #include "CoopManagerImportTypes.h"
 #include "CoopZipImport.h"
+#include "CoopZipFileWin.h"
 #include "CoopArchiveImport.h"
 #include <atomic>
 #include <thread>
@@ -50,7 +51,7 @@ struct Handle {
     ~Handle(){if(value!=INVALID_HANDLE_VALUE)CloseHandle(value);}
     Handle(const Handle&)=delete;Handle& operator=(const Handle&)=delete;
 };
-struct Mapping {std::wstring original,physical;std::string relative,hash;uint64_t bytes=0;};
+struct Mapping {std::wstring original,physical;std::string relative,hash;uint64_t bytes=0;bool inventory=true;};
 struct ConfigWatch{std::wstring physical;std::string relative;coop_mods::Entry expected;};
 struct State {
     std::wstring root,error,packageRoot,instanceId,instanceName;std::vector<coop_packages::Manifest> catalog;
@@ -234,7 +235,7 @@ inline bool PrepareActivation(PreparedActivation& staged){
         const auto directory=PackageDirectory(id);auto pin=Pin(directory,true);
         if(!pin)return Fail(L"Cannot lock package "+Wide(id));pins.push_back(std::move(pin));
         for(const auto& p:state.catalog)if(p.id==id)receipt+=p.id+"="+p.version+"\n";
-        if(id=="nfsu2-unlimiter"){
+        if(id=="nfsu2-unlimiter"&&!state.imported.count(id)){
             if(GetModuleHandleW(L"NFSU2Unlimiter.asi"))return Fail(L"Unlimiter was loaded before the manager. Remove duplicate autoloading in this test copy.");
             const auto nativePath=directory+L"\\NFSU2Unlimiter.asi";auto native=Pin(nativePath);
             std::string hash;uint64_t size=0;
@@ -267,7 +268,7 @@ inline bool PrepareActivation(PreparedActivation& staged){
                 valid=valid&&GetLastError()==ERROR_NO_MORE_FILES;FindClose(scan);if(!valid)return Fail(L"Unexpected files beside the approved native component.");
             }
             staged.natives.push_back({nativePath,state.root});
-        }else if(StandaloneNative(id)){
+        }else if(StandaloneNative(id)&&!state.imported.count(id)){
             const auto found=std::find_if(state.catalog.begin(),state.catalog.end(),[&](const auto& p){return p.id==id;});
             if(found==state.catalog.end()||!PrepareStandalone(*found,pins,staged.natives,staged.watches,receipt))return false;
         }else if(state.imported.count(id)){
@@ -297,13 +298,13 @@ inline bool PrepareActivation(PreparedActivation& staged){
 }
 inline bool ManagedInventoryFiles(const std::wstring& root,std::vector<coop_mod_scan::File>& files,std::string& error){
     if(!state.ready||!Equal(root,state.root))return true;
-    auto add=[&](const std::wstring& physical,const std::string& canonical,bool overlay=false){
-        if(coop_mods::IncludeFile(canonical))files.push_back({physical,canonical,true,overlay});
+    auto add=[&](const std::wstring& physical,const std::string& canonical,bool overlay=false,bool inventory=true){
+        if(coop_mods::IncludeFile(canonical))files.push_back({physical,canonical,true,overlay,inventory});
     };
-    for(const auto& mapping:state.mapping)add(mapping.physical,mapping.relative,mapping.relative.rfind("scripts/",0)!=0);
+    for(const auto& mapping:state.mapping)add(mapping.physical,mapping.relative,mapping.relative.rfind("scripts/",0)!=0,mapping.inventory);
     for(const auto& id:state.plan.Packages()){
         const auto directory=PackageDirectory(id);
-        if(const auto* known=StandaloneNative(id)){
+        if(const auto* known=state.imported.count(id)?nullptr:StandaloneNative(id)){
             add(directory+L"\\"+known->file,"scripts/"+coop_mods::Lower(coop_mod_scan::Utf8(known->file)));
             if(id!="camera-toolkit")add(directory+L"\\"+known->config,"scripts/"+coop_mods::Lower(coop_mod_scan::Utf8(known->config)));
             if(known->data)add(directory+L"\\"+known->data,"scripts/"+coop_mods::Lower(coop_mod_scan::Utf8(known->data)));

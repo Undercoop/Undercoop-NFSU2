@@ -785,6 +785,7 @@ void TickCoopCareerPresentation(DWORD flowState);
 uint32_t CoopCameraShieldCount();
 void TickCoopSessionNetwork(DWORD now);
 bool CoopModsReady(const coop::SessionSnapshot& state);
+bool HandleCoopModDecisionKey(unsigned key);
 const char* CoopModStatus();
 void ResetCoopModPeer();
 void TickCoopModNetwork(DWORD now);
@@ -3109,6 +3110,7 @@ LRESULT CALLBACK HookedWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
         if(wParam==CoopAnnouncements::kToggleKey&&!repeated&&!composing)
             TraceCoopConsoleToggle("window",consoleHandled);
         if(consoleHandled) return 0;
+        if (!repeated && HandleCoopModDecisionKey(unsigned(wParam))) return 0;
         if (HandleCoopSponsorDecisionKey(unsigned(wParam))) return 0;
         if (HandleCoopSpecialDecisionKey(unsigned(wParam))) return 0;
         if (HandleCoopRaceInviteKey(wParam)) return 0;

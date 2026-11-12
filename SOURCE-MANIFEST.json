@@ -41,8 +41,8 @@
   },
   {
     "path": "README.md",
-    "bytes": 31398,
-    "sha256": "d9ed5c12a89a07bff6b7e4f42487a29b9042f1af0a0b2f9b16e73bbddfef55ac"
+    "bytes": 31422,
+    "sha256": "4df9ed268d8d27676bbc98574c8f32098563b301470b98a7b951a359276b1acf"
   },
   {
     "path": "THIRD_PARTY_NOTICES.md",
@@ -83,6 +83,11 @@
     "path": "docs/PATCH_6.13.31.md",
     "bytes": 2867,
     "sha256": "e32808ec702ba775ed17675eb149c312a0c484939b941fd6a1e4580015eaa6c7"
+  },
+  {
+    "path": "docs/PATCH_6.13.32.md",
+    "bytes": 2536,
+    "sha256": "10e5398fe76c53695cfdaa2f74ab450326ef3b58cad929e5fbae703e077be735"
   },
   {
     "path": "docs/PUBLIC_RELEASE.md",
@@ -2665,6 +2670,31 @@
     "sha256": "7a8ee28e10cc4168cda9e3e32bc48a702f29cbe01b6abf53f699f7fa182a9630"
   },
   {
+    "path": "scratch/TestCoopManagerPackImport61332.bat",
+    "bytes": 771,
+    "sha256": "fbcffc1693a69b909e958753bd11420f5ea3e0a5e7f3c34ea8671e7e10b745e9"
+  },
+  {
+    "path": "scratch/TestCoopManagerPackImportUi61332.bat",
+    "bytes": 776,
+    "sha256": "201c0bc23c36cc8f29c212fb88902c1ad3adf22db5d8a62f49315cc3be32b1d0"
+  },
+  {
+    "path": "scratch/TestCoopModConsent61332.bat",
+    "bytes": 678,
+    "sha256": "10e8c2b752d7f7b385bbe0f82b8102a15dd49d9a20e6fe48800265095dc125e1"
+  },
+  {
+    "path": "scratch/TestCoopModConsentNative61332.bat",
+    "bytes": 724,
+    "sha256": "70e92a854ecc8ce8ca9bed6f8011f4ea58684c06168008444e45d822f07dcd56"
+  },
+  {
+    "path": "scratch/TestCoopZipFile61332.bat",
+    "bytes": 669,
+    "sha256": "6505a378da57e408230649298ddea26bbc6831e12a107e4478c6103006267137"
+  },
+  {
     "path": "scripts/NFSU2Coop.ini",
     "bytes": 1602,
     "sha256": "b673cbc651e8519578219375734034b67ef25d1f30eb884bcf9d48e5b26c02ef"
@@ -2736,13 +2766,13 @@
   },
   {
     "path": "src/CoopBinaryEngineWin.inl",
-    "bytes": 28807,
-    "sha256": "cd61f541795f29efa932131d6ceca6f7be7081ad2e95a6d8118805d3b6d02614"
+    "bytes": 29840,
+    "sha256": "7690e983295e7e99e1082ff201c76ed350a8d0d4e4372f6e6d996e04f59b952c"
   },
   {
     "path": "src/CoopBuildVersion.h",
     "bytes": 308,
-    "sha256": "cabddd32f2978f2ef5fb35067de7024a1028a3c13f72af15afec2bd2e221d2d4"
+    "sha256": "5cdc5d4d700f8b6fe11857cc40dbdad5b9cf3d4e484faf9115febc14be825648"
   },
   {
     "path": "src/CoopCarCatalog.h",
@@ -3001,8 +3031,8 @@
   },
   {
     "path": "src/CoopManagerImport.inl",
-    "bytes": 22855,
-    "sha256": "e660e34f29450dc383c31af0c137917c7f33fd6a5523473e8797821bb49d81af"
+    "bytes": 22959,
+    "sha256": "bdd3b3059f7e83af0adfb0d30b31c71778d8dbeb53bcac61ac6c7e116e1bd9f4"
   },
   {
     "path": "src/CoopManagerImportTypes.h",
@@ -3011,8 +3041,8 @@
   },
   {
     "path": "src/CoopManagerImportUi.inl",
-    "bytes": 23413,
-    "sha256": "76f22f962596b603a13fe363294aa5836eb4442eed8e2d703eb79bd36d9fd128"
+    "bytes": 29052,
+    "sha256": "5d5ec23e2875879baf3b332def884a49468adf7bec7763865eaabb0da1004c65"
   },
   {
     "path": "src/CoopManagerImportedNative.inl",
@@ -3021,8 +3051,8 @@
   },
   {
     "path": "src/CoopManagerImportedPrepare.inl",
-    "bytes": 3039,
-    "sha256": "5da4774a13dfd87c580a962479b3311b03f8ce97a33649b1b1eaa792368df020"
+    "bytes": 5005,
+    "sha256": "82804054a430f81884d2ce6a3a8f858b935e2a6ffebb529cba16fab22b9ec732"
   },
   {
     "path": "src/CoopManagerIni.inl",
@@ -3056,13 +3086,18 @@
   },
   {
     "path": "src/CoopManagerModpacksUi.inl",
-    "bytes": 11950,
-    "sha256": "6c741f93dfe436f290c5eb3d320d4283b90a91f52dc4f4783b2d26e55239a16f"
+    "bytes": 12234,
+    "sha256": "2939acb48f14f4b4e150b8e0754f5685498e7ac1b19b1d07b5965037e9e4cc1f"
   },
   {
     "path": "src/CoopManagerNative.inl",
     "bytes": 9128,
     "sha256": "f648529fc7b807d1044730a63e223012e786707f2a81ffa9988a032f092c47a0"
+  },
+  {
+    "path": "src/CoopManagerPackImport.inl",
+    "bytes": 17042,
+    "sha256": "d824bec178b4aec145220d84045e1664b90a3b0daa4148b170614a35b70fbd0c"
   },
   {
     "path": "src/CoopManagerSaveSeed.inl",
@@ -3080,34 +3115,39 @@
     "sha256": "e16be50f4a8229eea26369f9659a3ea5fe73f27fddf18f9f65b5ef4e04024ab2"
   },
   {
+    "path": "src/CoopModConsent.h",
+    "bytes": 5760,
+    "sha256": "3ec4ab875f483d090ebf85170dfec6ebebf52afae8485012c4ec2de954a460bf"
+  },
+  {
     "path": "src/CoopModInventory.h",
-    "bytes": 15463,
-    "sha256": "e48678013298d645160302ce2b9a347c3e9d0a6a1e07cb9f9000de2273ae0462"
+    "bytes": 15816,
+    "sha256": "4a761d619d82efa19749a5a9489866c4433de50f15be7ef870b6ef9e416a7d4a"
   },
   {
     "path": "src/CoopModManagerUi.inl",
-    "bytes": 46458,
-    "sha256": "3baa46c4de63f36f1e8fb358b4e4407585f1dccfc036accfbb6857d2df4db848"
+    "bytes": 46626,
+    "sha256": "4d4af924faf8721bcce437eb3ff54a669f9fc558e4b81787539d89db2f7bacf5"
   },
   {
     "path": "src/CoopModManagerWin.h",
-    "bytes": 26745,
-    "sha256": "0c092072c412825e8af02178c23a12fa0bc3ad4ca223300f9d3ef93d082029e4"
+    "bytes": 26928,
+    "sha256": "0af22cc6fe936f3227a8ec32c111eb7715e439076223d165685baf61a093fd1a"
   },
   {
     "path": "src/CoopModPackages.h",
-    "bytes": 20035,
-    "sha256": "03f0e362ac77be23cfef1f33c7945b3d6700299a8707146009adb02cadce4561"
+    "bytes": 20140,
+    "sha256": "688f8a9dd493082b65c26e1ae607dfb6b9c8beb8223b6fc3e2dc3a142235a7f2"
   },
   {
     "path": "src/CoopModScanWin.h",
-    "bytes": 21264,
-    "sha256": "21f27d56c8198fac0d831465b68d628b367377e0a0d1eb1e02efd4e4765def9d"
+    "bytes": 21406,
+    "sha256": "5bec3e177512ee236ec9a31593464a53cf3f8c9a4cb1843db7f261b332ec563b"
   },
   {
     "path": "src/CoopModSupportNative.inl",
-    "bytes": 19214,
-    "sha256": "b3b8ee6c569db31664908460bd8313c5e665067d21d7d5df987a364b7b7474d5"
+    "bytes": 25425,
+    "sha256": "23610b6ce972d5fe8f1158e19e1afb467b6d4044d6ba012cac6eeae187ad3d04"
   },
   {
     "path": "src/CoopMotion.h",
@@ -3595,14 +3635,19 @@
     "sha256": "f3cd6af980642907075d340df4ff6b1945603bc25a53e5e6965a333288c722fb"
   },
   {
+    "path": "src/CoopZipFileWin.h",
+    "bytes": 13563,
+    "sha256": "757896912f005935661242ece9d0c7f9314140add141e6fcc2a356985030ec5d"
+  },
+  {
     "path": "src/CoopZipImport.h",
     "bytes": 17260,
     "sha256": "31afddcd13622ee255e4edbae25ad05c71a383539d3c29c5d294a3f1c3f2d01d"
   },
   {
     "path": "src/NFSU2Coop.cpp",
-    "bytes": 425723,
-    "sha256": "254ba5c148fd1759aa8a5a01ec8bae3d2cef0ed4cef267c74f34c53abc2fc504"
+    "bytes": 425847,
+    "sha256": "d62798c60b0c69046ec9731d45c982c7e8bfa353e69efd28c2dd78e8886da233"
   },
   {
     "path": "src/NFSU2Coop.rc",
@@ -10440,6 +10485,26 @@
     "sha256": "e8ece0ee4f34f0b7f31fc9053b27905a0acafcf5d848e9099d65042457fb7db1"
   },
   {
+    "path": "tests/CoopManagerPackImportTests.cpp",
+    "bytes": 6204,
+    "sha256": "5756d2292c969d0fc7fdc7ce1d1ce42414016d454b5cc5707b6aea10624962c9"
+  },
+  {
+    "path": "tests/CoopManagerPackImportUiTests.cpp",
+    "bytes": 5502,
+    "sha256": "a1e53ec3b13fde46860c24a9e4bbed5a46ed6ccedfc47748d6997e5533582a7c"
+  },
+  {
+    "path": "tests/CoopModConsentNativeTests.cpp",
+    "bytes": 9431,
+    "sha256": "1eb33c31b6d6986a364f204f975df742fc8dd4c9d19a7502e9b237a5279633f4"
+  },
+  {
+    "path": "tests/CoopModConsentTests.cpp",
+    "bytes": 6658,
+    "sha256": "db825c945b454015ee14579c201dddee08d27e501eebe2739843b95da683a79d"
+  },
+  {
     "path": "tests/CoopPeerActivityTests.cpp",
     "bytes": 9400,
     "sha256": "3d11527610e7384daf3fb1be05022f9e278087f49ec6a721cdd29eda284295a2"
@@ -10448,6 +10513,11 @@
     "path": "tests/CoopPeerPartVisibilityTests.cpp",
     "bytes": 2534,
     "sha256": "03a7e5eb5f32dee77cf9d7b09d1f305ee456c6187184408101992bb57e967341"
+  },
+  {
+    "path": "tests/CoopZipFileTests.cpp",
+    "bytes": 8921,
+    "sha256": "618da16256e0a5ceb96467d79db89e4a44cccd22c8d57e659ed548e2a8d936f3"
   },
   {
     "path": "tests/Run-Tests.cmd",

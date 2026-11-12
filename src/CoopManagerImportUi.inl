@@ -6,14 +6,15 @@
 // Owned launch-window import jobs. Workers never touch a game, load native code,
 // edit UI state or write outside their mods workspace.
 enum class ImportPhase{Idle,Inspecting,Review,Installing,Complete,Failed};
-enum class ImportWork{Inspect,Install,Repair,Runtime,PlayRuntime};
+enum class ImportWork{Inspect,PackInspect,Install,Repair,Runtime,PlayRuntime};
+inline bool ImportInspectWork(ImportWork work){return work==ImportWork::Inspect||work==ImportWork::PackInspect;}
 inline bool ConfirmRequirements(HWND window,const std::wstring& message){return window&&MessageBoxW(window,message.c_str(),L"Undercoop - required components",MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2)==IDYES;}
 struct ImportPanel{
     ImportPhase phase=ImportPhase::Idle;ImportWork work=ImportWork::Inspect;
     bool allowDownloads=true,codeAccepted=false,closeAfter=false;
     std::shared_ptr<ImportPlan> plan,result;std::vector<std::string> selectedBefore;
     std::thread worker;std::mutex mutex;std::atomic<bool> cancel{false},done{false};bool okay=false;
-    std::wstring message;
+    std::wstring message,createdPackId;
     bool (*confirmRequirements)(HWND,const std::wstring&)=&ConfirmRequirements;
     FetchDependency fetchRuntime=&DownloadHTTPS;
     ~ImportPanel(){cancel.store(true);if(worker.joinable())worker.join();}
@@ -27,6 +28,7 @@ struct ImportLayout{
     UiRect Consent()const{return {base.content+20,base.body+190,base.ContentWidth()-40,50};}
     UiRect Install()const{return {base.content+20,base.footer-69,176,40};}
     UiRect Cancel()const{return {base.content+208,base.footer-69,115,40};}
+    UiRect Details()const{return {base.width-214,base.footer-69,184,40};}
 };
 constexpr UINT kImportTimer=7213;
 constexpr UINT kImportComplete=WM_APP+243;
@@ -35,6 +37,7 @@ constexpr UINT kImportComplete=WM_APP+243;
 constexpr wchar_t kModArchiveFilter[]=L"Mod archives\0*.zip;*.rar;*.7z;*.7zip;*.tar;*.tar.gz;*.tgz;*.tar.bz2;*.tbz2;*.tar.xz;*.txz;*.gz;*.bz2;*.xz;*.cab;*.arj;*.lzh;*.lha;*.cpio;*.iso;*.wim;*.xar;*.z;*.zst\0All files (*.*)\0*.*\0\0";
 constexpr wchar_t kModArchivePickerTitle[]=L"Undercoop - choose a mod archive";
 constexpr wchar_t kChooseArchiveLabel[]=L"Choose archive";
+constexpr wchar_t kModpackArchiveFilter[]=L"Modpack ZIP archives\0*.zip\0\0";
 inline bool UiConfirmImported(HWND window,const std::wstring& text){
     return MessageBoxW(window,text.c_str(),L"Undercoop - approve imported native code",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)==IDYES;
 }
@@ -79,19 +82,37 @@ template<class V> inline bool BeginImport(V& view,ImportWork work,const std::wst
     const auto root=state.root;const auto catalog=state.catalog;const auto selected=state.selected;const auto plan=panel.plan;const bool downloads=panel.allowDownloads;const HWND owner=view.window;const auto runtimeFetch=panel.fetchRuntime;
     const DWORD sourceAttributes=work==ImportWork::Inspect?GetFileAttributesW(source.c_str()):INVALID_FILE_ATTRIBUTES;
     const bool folderSource=sourceAttributes!=INVALID_FILE_ATTRIBUTES&&(sourceAttributes&FILE_ATTRIBUTE_DIRECTORY)!=0;
-    panel.selectedBefore=state.selected;panel.work=work;panel.phase=work==ImportWork::Inspect?ImportPhase::Inspecting:ImportPhase::Installing;
+    panel.selectedBefore=state.selected;panel.work=work;panel.phase=ImportInspectWork(work)?ImportPhase::Inspecting:ImportPhase::Installing;
     if(work==ImportWork::Repair||work==ImportWork::PlayRuntime)panel.plan.reset();
-    panel.cancel=false;panel.done=false;panel.okay=false;panel.result.reset();panel.codeAccepted=false;
-    SetImportStatus(panel,work==ImportWork::Inspect?(folderSource?L"Inspecting manual folder contents...":L"Inspecting archive contents..."):L"Checking requirements and staging files...");
+    panel.cancel=false;panel.done=false;panel.okay=false;panel.result.reset();panel.codeAccepted=false;panel.createdPackId.clear();
+    SetImportStatus(panel,ImportInspectWork(work)?(folderSource?L"Inspecting manual folder contents...":work==ImportWork::PackInspect?L"Inspecting modpack archive...":L"Inspecting archive contents..."):L"Checking requirements and staging files...");
     view.tab=5;view.busy=true;SyncIniEditor(view);
     try{panel.worker=std::thread([&panel,root,catalog,selected,plan,source,binaryLauncher,work,downloads,owner,runtimeFetch,folderSource]{
-        std::wstring error;bool okay=false;std::shared_ptr<ImportPlan> result;
+        std::wstring error,createdPackId;bool okay=false;std::shared_ptr<ImportPlan> result;
         try{
-            if(work==ImportWork::Inspect){result=std::make_shared<ImportPlan>();okay=folderSource?ImportInspectFolder(source,*result,error,&panel.cancel,root):ImportInspect(source,*result,error,&panel.cancel,root,binaryLauncher);}
+            if(ImportInspectWork(work)){
+                result=std::make_shared<ImportPlan>();
+                if(folderSource)okay=ImportInspectFolder(source,*result,error,&panel.cancel,root);
+                else{
+                    auto pack=std::make_shared<PackArchivePlan>();
+                    const auto probe=InspectModpackArchive(source,*pack,error,&panel.cancel);
+                    if(probe==PackProbe::Ready){
+                        result->pack=std::move(pack);result->archive=source;result->hash=result->pack->hash;
+                        result->bytes=result->pack->bytes;result->package.name=coop_mod_scan::Utf8(result->pack->name);
+                        result->code=!result->pack->nativeModules.empty();result->notes=result->pack->notes;okay=true;
+                    }else if(probe==PackProbe::NotPack){
+                        if(work==ImportWork::PackInspect)error=L"This ZIP is not a supported complete modpack. Use Add mods for individual mod archives.";
+                        else okay=ImportInspect(source,*result,error,&panel.cancel,root,binaryLauncher);
+                    }
+                }
+            }
             else if(work==ImportWork::Runtime){result=std::make_shared<ImportPlan>();okay=InstallBinaryRuntime(root,error,&panel.cancel,[&](const std::wstring& message){SetImportStatus(panel,message);})&&ImportInspect(plan->archive,*result,error,&panel.cancel,root);}
             else if(work==ImportWork::PlayRuntime)okay=runtimeFetch&&InstallBinaryRuntime(root,error,&panel.cancel,[&](const std::wstring& message){SetImportStatus(panel,message);},runtimeFetch);
             else if(work==ImportWork::Repair)okay=RepairRequirements(root,catalog,selected,error,&panel.cancel,[&](const std::wstring& message){SetImportStatus(panel,message);});
-            else{
+            else if(plan&&plan->pack){
+                okay=CommitModpackArchive(root,*plan->pack,createdPackId,error,&panel.cancel,
+                    [&](const std::wstring& message){SetImportStatus(panel,message);});
+            }else{
                 const auto target=root+L"\\mods\\"+Wide(plan->package.id);
                 if(plan->folder){
                     if(ImportFolderTargetAvailable(root,*plan,error))okay=ImportRequirements(root,*plan,catalog,downloads,error,&panel.cancel,[&](const std::wstring& message){SetImportStatus(panel,message);})&&ImportCommitFolder(root,*plan,error,&panel.cancel);
@@ -100,8 +121,8 @@ template<class V> inline bool BeginImport(V& view,ImportWork work,const std::wst
             }
         }catch(const std::exception&){error=L"Import failed within its resource limits. No existing package was replaced.";okay=false;}
         catch(...){error=L"Import could not complete. Existing packages and careers were not overwritten.";okay=false;}
-        {std::lock_guard<std::mutex> lock(panel.mutex);panel.okay=okay;panel.result=std::move(result);
-            panel.message=okay?(work==ImportWork::PlayRuntime?L"Microsoft .NET 8 x86 installed and verified. Continuing Play...":work==ImportWork::Inspect||work==ImportWork::Runtime?L"Review the package, then choose Install. It is not enabled automatically.":work==ImportWork::Repair?L"Required component packages checked. Launch validates their files; the selected mods are unchanged.":plan&&plan->folder?L"Folder registered and disabled. Enable it in My mods or add it with Modpacks > Edit. Your teammate needs the same folder contents.":L"Installed and disabled. Enable it in My mods when you are ready; install the same archive on your teammate's computer."):error;}
+        {std::lock_guard<std::mutex> lock(panel.mutex);panel.okay=okay;panel.result=std::move(result);panel.createdPackId=std::move(createdPackId);
+            panel.message=okay?(work==ImportWork::PlayRuntime?L"Microsoft .NET 8 x86 installed and verified. Continuing Play...":ImportInspectWork(work)||work==ImportWork::Runtime?L"Review the package, then choose Install. It is not enabled automatically.":work==ImportWork::Repair?L"Required component packages checked. Launch validates their files; the selected mods are unchanged.":plan&&plan->pack?L"Imported into Modpacks; not activated. Your current setup and careers are unchanged. Install the same archive on your teammate's computer.":plan&&plan->folder?L"Folder registered and disabled. Enable it in My mods or add it with Modpacks > Edit. Your teammate needs the same folder contents.":L"Installed and disabled. Enable it in My mods when you are ready; install the same archive on your teammate's computer."):error;}
         if(okay&&panel.result&&!panel.result->binaryChoices.empty())SetImportStatus(panel,L"Choose an installer to inspect its changes. Nothing has been installed.");
         panel.done.store(true);
         if(owner)PostMessageW(owner,kImportComplete,0,0);
@@ -111,14 +132,23 @@ template<class V> inline bool BeginImport(V& view,ImportWork work,const std::wst
 template<class V> inline bool PollImport(V& view){
     auto& panel=view.imports;if(!panel.worker.joinable()||!panel.done.load())return false;
     panel.worker.join();if(view.window)KillTimer(view.window,kImportTimer);
-    bool okay=false;{std::lock_guard<std::mutex> lock(panel.mutex);okay=panel.okay;if(panel.work==ImportWork::Inspect||panel.work==ImportWork::Runtime)panel.plan=okay?std::move(panel.result):nullptr;}
-    if(panel.work!=ImportWork::Inspect&&panel.work!=ImportWork::Runtime&&panel.work!=ImportWork::PlayRuntime){const auto root=state.root;const auto selection=panel.selectedBefore;
+    bool okay=false;{std::lock_guard<std::mutex> lock(panel.mutex);okay=panel.okay;if(ImportInspectWork(panel.work)||panel.work==ImportWork::Runtime)panel.plan=okay?std::move(panel.result):nullptr;}
+    const bool packCommit=panel.work==ImportWork::Install&&panel.plan&&panel.plan->pack;
+    if(packCommit){
+        // A whole-pack import publishes a new inactive instance. Discovery and
+        // SaveSelection here would mutate the unrelated currently active setup.
+        if(okay){
+            view.modpacks.first=0;view.modpacks.message=ImportStatus(panel);
+            if(!ListModpacks(view.modpacks.packs))view.modpacks.message+=L" The modpack list could not refresh: "+state.error;
+            view.tab=6;
+        }
+    }else if(!ImportInspectWork(panel.work)&&panel.work!=ImportWork::Runtime&&panel.work!=ImportWork::PlayRuntime){const auto root=state.root;const auto selection=panel.selectedBefore;
         if(!Discover(root)){okay=false;SetImportStatus(panel,L"Installation finished but the package list could not reload: "+state.error);}
         state.selected=selection;state.nativeTrusted=false;
         if(!SaveSelection()){okay=false;SetImportStatus(panel,L"Package processing finished, but the disabled selection could not be saved. Review My mods before launch; existing packages were not overwritten.");}
         if(okay&&panel.work==ImportWork::Install&&!state.instanceId.empty())SetImportStatus(panel,L"Installed and disabled in your custom mod library. Open Modpacks > Edit to add it to this instance; other modpacks were not changed.");
     }
-    panel.phase=okay?(panel.work==ImportWork::Inspect||panel.work==ImportWork::Runtime?ImportPhase::Review:ImportPhase::Complete):ImportPhase::Failed;view.busy=false;
+    panel.phase=okay?(ImportInspectWork(panel.work)||panel.work==ImportWork::Runtime?ImportPhase::Review:ImportPhase::Complete):ImportPhase::Failed;view.busy=false;
     if(panel.closeAfter&&view.window)PostMessageW(view.window,WM_CLOSE,0,0);return true;
 }
 template<class V> inline bool PickImport(V& view){
@@ -126,6 +156,25 @@ template<class V> inline bool PickImport(V& view){
     dialog.lpstrFilter=kModArchiveFilter;dialog.lpstrFile=path;dialog.nMaxFile=DWORD(std::size(path));
     dialog.lpstrTitle=kModArchivePickerTitle;dialog.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR|OFN_DONTADDTORECENT;
     if(!GetOpenFileNameW(&dialog))return false;return BeginImport(view,ImportWork::Inspect,path);
+}
+template<class V> inline bool PickImportModpack(V& view){
+    wchar_t path[32768]{};OPENFILENAMEW dialog{};dialog.lStructSize=sizeof(dialog);dialog.hwndOwner=view.window;
+    dialog.lpstrFilter=kModpackArchiveFilter;dialog.lpstrFile=path;dialog.nMaxFile=DWORD(std::size(path));
+    dialog.lpstrTitle=L"Undercoop - import a modpack ZIP";dialog.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR|OFN_DONTADDTORECENT;
+    if(!GetOpenFileNameW(&dialog))return false;return BeginImport(view,ImportWork::PackInspect,path);
+}
+inline std::wstring PackImportDetailsText(const PackArchivePlan& pack){
+    std::wstring text=pack.name+L"\n\n"+std::to_wstring(pack.files)+L" files / "+std::to_wstring((pack.bytes+1024*1024-1)/(1024*1024))+L" MiB\n";
+    text+=L"Archive SHA-256: "+Wide(pack.hash)+L"\n";
+    if(!pack.nativeModules.empty()){text+=L"\nNative plugins included:\n";for(const auto& module:pack.nativeModules)text+=L"- "+module+L"\n";}
+    if(!pack.notes.empty()){text+=L"\nImport notes:\n";for(const auto& note:pack.notes)text+=L"- "+note+L"\n";}
+    text+=L"\nImport creates an inactive modpack. Your current selection and existing careers are not replaced. Both players must import the same archive.";
+    return text;
+}
+template<class V> inline bool ShowImportPackDetails(V& view){
+    const auto& plan=view.imports.plan;if(!plan||!plan->pack||!view.window)return false;
+    const auto text=PackImportDetailsText(*plan->pack);
+    MessageBoxW(view.window,text.c_str(),L"Undercoop - modpack import details",MB_OK|MB_ICONINFORMATION);return true;
 }
 
 inline bool ChooseManualFolder(HWND window,std::wstring& path){
@@ -179,9 +228,10 @@ template<class V> inline UiHit ImportHitTest(const V& view,float x,float y,float
     const ImportLayout l(width,height);if(l.Cancel().Contains(x,y)&&view.busy)return {UiAction::ImportCancel};if(view.busy)return {};
     if(l.Pick().Contains(x,y))return {UiAction::ImportPick};
     if(l.Folder().Contains(x,y))return {UiAction::ImportFolder};
+    if(view.imports.plan&&view.imports.plan->pack&&l.Details().Contains(x,y))return {UiAction::ImportPackDetails};
     if(view.imports.phase!=ImportPhase::Review&&l.Install().Contains(x,y))return {UiAction::ImportRepair};
     if(view.imports.phase==ImportPhase::Review&&view.imports.plan){
-        if(l.Downloads().Contains(x,y))return {UiAction::ImportDownloads};
+        if(!view.imports.plan->pack&&l.Downloads().Contains(x,y))return {UiAction::ImportDownloads};
         if(l.Consent().Contains(x,y)&&view.imports.plan->code)return {UiAction::ImportConsent};
         if(l.Install().Contains(x,y)&&(!view.imports.plan->code||view.imports.codeAccepted))return {UiAction::ImportInstall};
     }return {};
@@ -202,11 +252,26 @@ template<class V> inline void PaintImport(V& view,float width,float height){
         text(L"Microsoft .NET 8 x86",x+20,y+65,cw-40,35,16,0xDCE4F0,UiFace::Regular,true);
         text(L"Downloading and verifying a private copy inside mods. Play continues automatically when it is ready. Your selected mods and careers stay unchanged.",x+20,y+115,cw-40,90,14,0xA6B3C6,UiFace::Regular,true);
     }else if(!panel.plan||panel.phase==ImportPhase::Inspecting){
-        text(view.busy?(panel.work==ImportWork::Repair?L"Checking requirements...":L"Inspecting package..."):L"ADD A MOD",x+20,y+17,cw-40,30,20,0xE6EBF3,UiFace::Bold);
+        text(view.busy?(panel.work==ImportWork::Repair?L"Checking requirements...":panel.work==ImportWork::PackInspect?L"Inspecting modpack...":L"Inspecting package..."):L"ADD A MOD",x+20,y+17,cw-40,30,20,0xE6EBF3,UiFace::Bold);
         text(L"Choose an archive or a game-ready folder, or drop either here. Supported layouts include CARS/GLOBAL resources and scripts-style ASI plugins. Folder metadata is created for you.",x+20,y+65,cw-40,70,14,0xA6B3C6,UiFace::Regular,true);
         text(L"Supported Binary data installers are converted inside mods; installer programs are not executed. Missing supported components require your approval before downloading.",x+20,y+152,cw-40,72,13,0x929FB2,UiFace::Regular,true);
         const float pendingRoom=l.base.footer-88-y-239-12;
         if(!state.pendingFolders.empty()&&pendingRoom>28)text(std::to_wstring(state.pendingFolders.size())+L" unregistered folder(s) found in mods. Choose folder to review and register one.",x+20,y+239,cw-40,pendingRoom,13,0xC7D2E0,UiFace::Regular,true);
+    }else if(panel.plan->pack){
+        const auto& pack=*panel.plan->pack;
+        text(pack.name,x+20,y+15,cw-40,31,21,0xEDF1F8,UiFace::Bold);
+        text(L"Complete modpack  /  "+std::to_wstring(pack.files)+L" files  /  "+std::to_wstring((pack.bytes+1024*1024-1)/(1024*1024))+L" MiB",x+20,y+53,cw-40,24);
+        std::wstring modules=L"Included native plugins: ";
+        if(pack.nativeModules.empty())modules+=L"none";
+        for(size_t i=0;i<pack.nativeModules.size();++i){if(i)modules+=L", ";modules+=pack.nativeModules[i];}
+        text(modules,x+20,y+83,cw-40,76,12,0xB4C4D9,UiFace::Regular,true);
+        text(L"Imported into Modpacks, inactive. Your current setup is preserved.",x+20,y+163,cw-40,25,12,0xAABBD3);
+        if(panel.plan->code){const auto box=l.Consent();r.Box(box.x,box.y+8,18,18,panel.codeAccepted?0xDCE4F0:0x29313D,4,0x697A93);
+            if(panel.codeAccepted){r.Line(box.x+4,box.y+17,box.x+8,box.y+21,0x243044,1.7f);r.Line(box.x+8,box.y+21,box.x+14,box.y+13,0x243044,1.7f);}
+            text(L"I approve importing these native plugins. They are not sandboxed. Importing does not activate the modpack.",box.x+29,box.y+6,box.w-29,box.h,12,0xB4C0D2,UiFace::Regular,true);}
+        const float noteY=y+(panel.plan->code?250:198),room=l.base.footer-94-noteY;
+        if(room>25)text(pack.notes.empty()?L"Both players need the same archive. See Package details before importing.":pack.notes.front()+L" See Package details for all notes.",x+20,noteY,cw-40,room,12,0x8E9FB7,UiFace::Regular,true);
+        if(!view.busy)button(l.Details(),L"Package details",true);
     }else{
         const auto& plan=*panel.plan;
         text(Wide(plan.package.name),x+20,y+15,cw-40,31,21,0xEDF1F8,UiFace::Bold);
@@ -232,6 +297,6 @@ template<class V> inline void PaintImport(V& view,float width,float height){
             text(notes,x+20,noteY,cw-40,room,12,0x8E9FB7,UiFace::Regular,true);}
     }
     if(view.busy)button(l.Cancel(),panel.cancel.load()?L"Cancelling...":L"Cancel",!panel.cancel.load());
-    else if(panel.phase==ImportPhase::Review&&panel.plan)button(l.Install(),panel.plan->runtimeMissing?L"Get required runtime":panel.plan->folder?L"Register folder":L"Install package",!panel.plan->code||panel.codeAccepted);
+    else if(panel.phase==ImportPhase::Review&&panel.plan)button(l.Install(),panel.plan->pack?L"Import modpack":panel.plan->runtimeMissing?L"Get required runtime":panel.plan->folder?L"Register folder":L"Install package",!panel.plan->code||panel.codeAccepted);
     else button(l.Install(),L"Check requirements",true);
 }
