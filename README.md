@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Open Beta" src="https://img.shields.io/badge/OPEN_BETA-6.13.30-d7b878?style=flat-square&amp;labelColor=16191d">
+  <img alt="Open Beta" src="https://img.shields.io/badge/OPEN_BETA-6.13.31-d7b878?style=flat-square&amp;labelColor=16191d">
   <img alt="Windows x86" src="https://img.shields.io/badge/PLATFORM-Windows_x86-c8d1dc?style=flat-square&amp;labelColor=16191d">
   <img alt="Two-player co-op" src="https://img.shields.io/badge/PLAYERS-2-c8d1dc?style=flat-square&amp;labelColor=16191d">
   <img alt="GPLv3 with 7-Zip permission" src="https://img.shields.io/badge/LICENSE-GPLv3_%2B_7--Zip_permission-c8d1dc?style=flat-square&amp;labelColor=16191d">
@@ -21,7 +21,7 @@
   <a href="https://developer.undercoop.dev/status"><img alt="Undercoop Status" src="https://img.shields.io/badge/Undercoop-Status-292c33?style=for-the-badge"></a>
 </p>
 
-> **Open Beta · 6.13.30**
+> **Open Beta · 6.13.31**
 >
 > Undercoop is in active development. The systems below are implemented, but unusual race transitions, mod combinations and remote sessions can still expose bugs. Keep your own save copies, use the same Undercoop build on both PCs, and report problems with both players' logs. This repository contains the mod and launcher source, not the original game.
 
@@ -33,15 +33,15 @@
 
 **Explore the project:** [Co-op features](#co-op-features) · [Mod manager](#the-integrated-mod-manager) · [VirusTotal / antivirus](#virustotal-and-antivirus-alerts) · [Getting started](#getting-started) · [Network architecture](#network-architecture) · [Build from source](#build-from-source) · [Bug reports](#reporting-a-problem) · [Licensing](#licensing-and-branding)
 
-### Latest patch · 6.13.30
+### Latest patch · 6.13.31
 
-- Install the ASI and its INI, then start the game. Undercoop prepares missing startup files and its private mod workspace automatically.
-- Repair missing startup directories on later launches while retaining existing settings, mod selections, modpacks and careers.
-- Extract embedded archive and Binary support files when their features need them.
+- Add a verified compatibility adapter for **Animation Controller 1.2.1**. Its standalone and inlined animation-state queries now defer safely when the car's animation scene is absent, loading or inconsistent.
+- Bound scene-list traversal and validate the local car context, retaining the mod's normal animation actions and settings.
+- Apply the adapter only after the exact plugin file, loaded executable ownership and target instructions match. Other builds are left untouched.
 
 Compatible ASI loader builds are now accepted by their required virtual-file APIs, instead of being rejected for differing from one preview build's SHA-256. Missing or outdated loader features produce an actionable installation message.
 
-See [the patch notes and test checklist](docs/PATCH_6.13.30.md).
+See [the patch notes and test checklist](docs/PATCH_6.13.31.md).
 
 ## Co-op features
 

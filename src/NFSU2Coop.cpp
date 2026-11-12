@@ -11,6 +11,7 @@
 #include <winhttp.h>
 #include <shlobj.h>
 #include <psapi.h>
+#include <tlhelp32.h>
 #ifdef small
 #undef small
 #endif
@@ -40,6 +41,8 @@
 #include "CoopModInventory.h"
 #include "CoopModScanWin.h"
 #include "CoopUnlimiterRideCompat.h"
+#include "CoopAnimationScene.h"
+#include "CoopAnimationModule.h"
 #include "CoopStockCatalog.h"
 #include "CoopProfileContext.h"
 #include "CoopCareerHistoryWin.h"
@@ -2753,6 +2756,8 @@ bool IsGameWindowFocused() {
     return (foreground == gameHwnd || GetAncestor(foreground, GA_ROOT) == gameHwnd);
 }
 
+#include "CoopAnimationControllerNative.inl"
+
 #include "CoopResultsTrace.inl"
 #include "CoopResultsFocusNative.inl"
 
@@ -3179,6 +3184,7 @@ bool MaintainCoopFrontendRoster(uint32_t flow) {
 }
 
 void __cdecl UiTick() {
+    CoopAnimationControllerNative::Poll();
     static const bool perfInitialized = [] { CoopPerf::Initialize(LogMessage); return true; }();
     (void)perfInitialized;
     bool perfGameplay = false;
@@ -9247,6 +9253,7 @@ DWORD WINAPI RunObserver(void* moduleHandle) {
     gTargetEndpoint.sin_port = htons(gTargetPort);
     inet_pton(AF_INET, gPeerAddress, &gTargetEndpoint.sin_addr);
 
+    CoopAnimationControllerNative::Poll();
     const bool uiHookInstalled = InstallUiTickHook();
     InstallCoopPhysicalMotion();
     InstallCoopDualRegionHook();

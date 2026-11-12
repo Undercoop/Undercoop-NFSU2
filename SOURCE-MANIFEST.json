@@ -41,8 +41,8 @@
   },
   {
     "path": "README.md",
-    "bytes": 31267,
-    "sha256": "6f3474fbc0b3a1fb26b424d0d352f96da16ee5729ab35496f5f07393dfb01a52"
+    "bytes": 31398,
+    "sha256": "d9ed5c12a89a07bff6b7e4f42487a29b9042f1af0a0b2f9b16e73bbddfef55ac"
   },
   {
     "path": "THIRD_PARTY_NOTICES.md",
@@ -78,6 +78,11 @@
     "path": "docs/PATCH_6.13.30.md",
     "bytes": 1879,
     "sha256": "61371d0c86f5840a99d83aca70b7b5082f86204bf7ca135057894a5a9f304f7b"
+  },
+  {
+    "path": "docs/PATCH_6.13.31.md",
+    "bytes": 2867,
+    "sha256": "e32808ec702ba775ed17675eb149c312a0c484939b941fd6a1e4580015eaa6c7"
   },
   {
     "path": "docs/PUBLIC_RELEASE.md",
@@ -2635,6 +2640,21 @@
     "sha256": "64205093d387ff8f6f1a0c7f9273d3745cf288e0eeadfffa884a0a9ea6fe33ad"
   },
   {
+    "path": "scratch/TestCoopAnimation61331.bat",
+    "bytes": 694,
+    "sha256": "7f8b00144c8841150aa19962ecbe555656ccd4c2712f19ec5ee2ec938b1a5c0f"
+  },
+  {
+    "path": "scratch/TestCoopAnimationModule61331.bat",
+    "bytes": 701,
+    "sha256": "620f36b57b8fb8ee9cadcd1c9469f379513e55d569c2b7f45626459efe9c4304"
+  },
+  {
+    "path": "scratch/TestCoopAnimationNative61331.bat",
+    "bytes": 709,
+    "sha256": "fe57bf56bf741b392a1b4574c2c94555c663f36e26b8917954b0d758e2e91e70"
+  },
+  {
     "path": "scratch/TestCoopManagerBootstrap61329.bat",
     "bytes": 764,
     "sha256": "b7359c72b3abb280ef9d4c6130775a565bbb2158f1e9c7c1ee199079b8f4ea7c"
@@ -2680,6 +2700,21 @@
     "sha256": "da98a754f83b772f81182690f9616da950e7cd6ae0f44eddd019dd74acf3b2c0"
   },
   {
+    "path": "src/CoopAnimationControllerNative.inl",
+    "bytes": 8625,
+    "sha256": "9f2e647c1b7bf447390598e283c35b3478afa5ebda1f74987d5cc522f2bee208"
+  },
+  {
+    "path": "src/CoopAnimationModule.h",
+    "bytes": 10790,
+    "sha256": "9ee520902edf51de24c59022eaa3428419d411343332c96482d8b4a702824c67"
+  },
+  {
+    "path": "src/CoopAnimationScene.h",
+    "bytes": 4008,
+    "sha256": "dd6e68d026c9ac44ed48aed9acd2db942f240e40b1b63de258e5ed922a4e950c"
+  },
+  {
     "path": "src/CoopAnnouncements.h",
     "bytes": 4201,
     "sha256": "aed77ad0222a63b61672c3257ff99727e87e7efbf1e22612808f25fe670713f8"
@@ -2707,7 +2742,7 @@
   {
     "path": "src/CoopBuildVersion.h",
     "bytes": 308,
-    "sha256": "0d090c6aca5b84acc147b8ef326d41b38012b28826c03b5573e2d0cbf1898f5d"
+    "sha256": "cabddd32f2978f2ef5fb35067de7024a1028a3c13f72af15afec2bd2e221d2d4"
   },
   {
     "path": "src/CoopCarCatalog.h",
@@ -3566,8 +3601,8 @@
   },
   {
     "path": "src/NFSU2Coop.cpp",
-    "bytes": 425504,
-    "sha256": "beb9bd851b0b3d5c8b529d5369288a58af5fd8a20dec60eb403da62d97bae44f"
+    "bytes": 425723,
+    "sha256": "254ba5c148fd1759aa8a5a01ec8bae3d2cef0ed4cef267c74f34c53abc2fc504"
   },
   {
     "path": "src/NFSU2Coop.rc",
@@ -10343,6 +10378,21 @@
     "path": "src/third_party/miniz/miniz_zip.h",
     "bytes": 27196,
     "sha256": "eff19da6bcd7e127bb4447bf67a6093a6e589ee496fd251a444ec3b58c1d86f4"
+  },
+  {
+    "path": "tests/CoopAnimationModuleTests.cpp",
+    "bytes": 6181,
+    "sha256": "28cf9ef55f3b647308efb97a8b824e2a98c95ec0c46bb7462403bf04f4cda61b"
+  },
+  {
+    "path": "tests/CoopAnimationNativeTests.cpp",
+    "bytes": 5903,
+    "sha256": "78e3d7ab45d7a9d5d748d9bc5605b4ae2870dc04a344c2754ec7772d226c46b0"
+  },
+  {
+    "path": "tests/CoopAnimationSceneTests.cpp",
+    "bytes": 8385,
+    "sha256": "2a06587f892175123b6c06afbf8ffc3bb2b42eb0bfc1685676eab453c1bb4702"
   },
   {
     "path": "tests/CoopConnectionHudRenderTests.cpp",
