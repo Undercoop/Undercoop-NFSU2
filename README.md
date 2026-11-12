@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Open Beta" src="https://img.shields.io/badge/OPEN_BETA-6.13.28-d7b878?style=flat-square&amp;labelColor=16191d">
+  <img alt="Open Beta" src="https://img.shields.io/badge/OPEN_BETA-6.13.29-d7b878?style=flat-square&amp;labelColor=16191d">
   <img alt="Windows x86" src="https://img.shields.io/badge/PLATFORM-Windows_x86-c8d1dc?style=flat-square&amp;labelColor=16191d">
   <img alt="Two-player co-op" src="https://img.shields.io/badge/PLAYERS-2-c8d1dc?style=flat-square&amp;labelColor=16191d">
   <img alt="GPLv3 with 7-Zip permission" src="https://img.shields.io/badge/LICENSE-GPLv3_%2B_7--Zip_permission-c8d1dc?style=flat-square&amp;labelColor=16191d">
@@ -21,7 +21,7 @@
   <a href="https://developer.undercoop.dev/status"><img alt="Undercoop Status" src="https://img.shields.io/badge/Undercoop-Status-292c33?style=for-the-badge"></a>
 </p>
 
-> **Open Beta · 6.13.28**
+> **Open Beta · 6.13.29**
 >
 > Undercoop is in active development. The systems below are implemented, but unusual race transitions, mod combinations and remote sessions can still expose bugs. Keep your own save copies, use the same Undercoop build on both PCs, and report problems with both players' logs. This repository contains the mod and launcher source, not the original game.
 
@@ -33,14 +33,13 @@
 
 **Explore the project:** [Co-op features](#co-op-features) · [Mod manager](#the-integrated-mod-manager) · [VirusTotal / antivirus](#virustotal-and-antivirus-alerts) · [Getting started](#getting-started) · [Network architecture](#network-architecture) · [Build from source](#build-from-source) · [Bug reports](#reporting-a-problem) · [Licensing](#licensing-and-branding)
 
-### Latest patch · 6.13.28
+### Latest patch · 6.13.29
 
-- Keep native car/shared/wheel geometry indexes available for live co-op streaming, check drawable residency before committing teammate appearances, and rebind incomplete full-car visuals when their meshes become resident.
-- Add the teammate's current activity to the existing live connection/ping indicator, including menus, shops, races, results, cutscenes and Special Events. Stale activity is explicitly unavailable.
-- Import game-ready mod folders without writing a package manifest by hand. Review and register manual folders, then enable/disable them and include them in independent modpacks.
-- Keep existing careers, imported saves, mod selections and connection settings unchanged during deployment.
+- Install the ASI and its INI, then start the game. Undercoop prepares missing startup files and its private mod workspace automatically.
+- Repair missing startup directories on later launches while retaining existing settings, mod selections, modpacks and careers.
+- Extract embedded archive and Binary support files when their features need them.
 
-See [the patch notes and test checklist](docs/PATCH_6.13.28.md).
+See [the patch notes and test checklist](docs/PATCH_6.13.29.md).
 
 ## Co-op features
 
@@ -185,7 +184,7 @@ It also requires `IsUltimateASILoader`, `AddVirtualPathForOverloadW` and `Remove
 ### Install and connect
 
 1. Keep a backup of your game and saves. Put the built `NFSU2Coop.asi` and supplied `scripts/NFSU2Coop.ini` in the game's `scripts` directory, alongside the compatible loader setup.
-2. Start `SPEED2.EXE`. In the integrated launcher, configure **Undercoop Settings → Connection**. Use explicit Host/Player 2 roles for a two-computer setup.
+2. Start `SPEED2.EXE`. Undercoop automatically creates missing startup files and the `mods/_undercoop/state` workspace. In the integrated launcher, configure **Undercoop Settings → Connection**. Use explicit Host/Player 2 roles for a two-computer setup.
 3. Put each teammate's LAN/VPN **IPv4 address** in the other copy's peer setting. Use matching reciprocal ports. For two local game copies, use `127.0.0.1` and separate game directories.
 4. Select matching mods and gameplay options. Start the game, open CO-OP, host/join the lobby and let the compatibility/readiness checks finish.
 5. The Host opens **Start the Career** and chooses or creates the shared career. For imported careers, prepare the same original save on both computers first.

@@ -138,9 +138,10 @@ inline std::wstring PackageDirectory(const std::string& id){return (state.packag
 #include "CoopManagerImportedPrepare.inl"
 inline bool SnapshotModpackCareers(const std::wstring&,const std::wstring&,const std::atomic<bool>*);
 #include "CoopManagerModpacks.inl"
+#include "CoopManagerBootstrap.inl"
 inline bool Discover(const std::wstring& root){
     state.root=root;state.catalog.clear();state.selected.clear();state.imported.clear();state.pendingFolders.clear();state.error.clear();state.packageRoot.clear();state.instanceId.clear();state.instanceName.clear();
-    if(!RealPath(root,true)||!RealPath(root+L"\\mods",true))return Fail(L"The mods folder is missing or linked.");
+    if(!BootstrapInstallation(root))return false;
     WIN32_FIND_DATAW row{};HANDLE find=FindFirstFileW((root+L"\\mods\\*").c_str(),&row);
     if(find==INVALID_HANDLE_VALUE)return Fail(L"Cannot inspect the mods folder.");
     std::wstring error;

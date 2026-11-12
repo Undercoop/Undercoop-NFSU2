@@ -56,6 +56,11 @@ inline bool IsPrivateDirectory(const std::string& name) {
 }
 inline bool IncludeFile(const std::string& path) {
     if(!SafePath(path))return false;
+#ifdef UNDERCOOP_MOD_MANAGER
+    // First-run loader metadata differs between a fresh setup and an existing
+    // installation. Runtime game files and native modules are checked below.
+    if(path=="global.ini")return false;
+#endif
     const auto slash=path.find('/');const auto first=path.substr(0,slash);
     if(IsPrivateDirectory(first))return false;
     for(size_t start=0,end=path.find('/');end!=std::string::npos;start=end+1,end=path.find('/',start))

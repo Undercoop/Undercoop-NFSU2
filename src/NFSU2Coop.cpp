@@ -9520,7 +9520,13 @@ extern "C" __declspec(dllexport) void InitializeASI(){
     wchar_t executable[MAX_PATH]{};DWORD n=GetModuleFileNameW(nullptr,executable,MAX_PATH);
     if(!n||n>=MAX_PATH)ExitProcess(ERROR_BAD_PATHNAME);
     std::wstring root(executable,n);root.resize(root.find_last_of(L'\\'));
-    if(GetPrivateProfileIntW(L"GlobalSets",L"DontLoadFromDllMain",0,(root+L"\\global.ini").c_str())!=1)return;
+    if(!CoopModManager::BootstrapInstallation(root)){
+        MessageBoxW(nullptr,CoopModManager::state.error.c_str(),L"Undercoop - installation",MB_OK|MB_ICONERROR);
+        ExitProcess(ERROR_WRITE_FAULT);
+    }
+    // The supported loader already defaults to deferred initialization. A
+    // missing startup INI must never silently disable the mod.
+    if(GetPrivateProfileIntW(L"GlobalSets",L"DontLoadFromDllMain",1,(root+L"\\global.ini").c_str())!=1)return;
     StartCoopCrashReporter(gCoopStartupModule);
     if(!CoopModManager::Show(gCoopStartupModule,root)){
         if(!CoopModManager::state.error.empty())MessageBoxW(nullptr,CoopModManager::state.error.c_str(),L"Undercoop Mod Manager",MB_OK|MB_ICONERROR);
