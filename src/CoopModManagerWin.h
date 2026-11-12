@@ -216,6 +216,7 @@ inline bool SaveSelection(){
 }
 using AddPath=bool(WINAPI*)(const wchar_t*,const wchar_t*,int);
 using RemovePath=void(WINAPI*)(const wchar_t*);
+#include "CoopManagerLoader.inl"
 #include "CoopManagerSaveSeed.inl"
 #include "CoopManagerCareerDomain.inl"
 struct PreparedActivation{
@@ -228,9 +229,6 @@ inline bool PrepareActivation(PreparedActivation& staged){
     if(state.ready||state.fatal)return false;if(!MakePlan()||!SelectedImportedLibrariesSafe())return false;
     staged=PreparedActivation{};auto& mappings=staged.mappings;auto& pins=staged.pins;
     std::string receipt="Undercoop manager protocol=2\n";
-    auto loaderPin=Pin(state.root+L"\\dinput8.dll");std::string loaderHash;uint64_t loaderSize=0;
-    if(!loaderPin||!Digest(loaderPin->value,loaderHash,loaderSize)||loaderHash!="ef7b1c3e3ae89dc6937182ad634ab89395610dac720f1f2c0da2391c1f19d149")return Fail(L"The ASI loader differs from the tested preview build.");
-    pins.push_back(std::move(loaderPin));
     auto rootPin=Pin(state.root+L"\\mods",true);if(!rootPin)return Fail(L"Cannot lock the mods folder.");pins.push_back(std::move(rootPin));
     for(const auto& id:state.plan.Packages()){
         const auto directory=PackageDirectory(id);auto pin=Pin(directory,true);
@@ -329,13 +327,10 @@ inline bool ManagedInventoryFiles(const std::wstring& root,std::vector<coop_mod_
 }
 inline bool Activate(){
     if(state.ready||state.fatal)return false;
-    HMODULE loader=GetModuleHandleW(L"dinput8.dll");
-    if(!loader)return Fail(L"The required ASI loader is not active.");
-    const auto add=reinterpret_cast<AddPath>(GetProcAddress(loader,"AddVirtualPathForOverloadW"));
-    const auto remove=reinterpret_cast<RemovePath>(GetProcAddress(loader,"RemoveVirtualPathFromOverloadW"));
-    const auto marker=reinterpret_cast<bool(WINAPI*)()>(GetProcAddress(loader,"IsUltimateASILoader"));
-    if(!add||!remove||!marker||!marker())return Fail(L"This preview requires its tested ASI loader. No game files were changed.");
+    LoaderBinding loader;if(!BindActiveLoader(loader))return false;
+    const auto add=loader.add;const auto remove=loader.remove;
     PreparedActivation staged;if(!PrepareActivation(staged))return false;
+    staged.pins.push_back(std::move(loader.file));
     if(!staged.natives.empty()&&!state.nativeTrusted)return Fail(L"Open Components and approve the verified native components first.");
     if(!CommitCareerDomain(staged.legacySaveFolder,staged.saveFolder))return false;
     // Named setups already represent the user's explicit career snapshot,

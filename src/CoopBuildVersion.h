@@ -4,5 +4,5 @@
 // Additional 7-Zip permission is in LICENSE-7ZIP-EXCEPTION.txt.
 
 #pragma once
-#define UNDERCOOP_MANAGER_VERSION "6.13.29"
-#define UNDERCOOP_BUILD_VERSION "6.13.29"
+#define UNDERCOOP_MANAGER_VERSION "6.13.30"
+#define UNDERCOOP_BUILD_VERSION "6.13.30"

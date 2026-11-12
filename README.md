@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Open Beta" src="https://img.shields.io/badge/OPEN_BETA-6.13.29-d7b878?style=flat-square&amp;labelColor=16191d">
+  <img alt="Open Beta" src="https://img.shields.io/badge/OPEN_BETA-6.13.30-d7b878?style=flat-square&amp;labelColor=16191d">
   <img alt="Windows x86" src="https://img.shields.io/badge/PLATFORM-Windows_x86-c8d1dc?style=flat-square&amp;labelColor=16191d">
   <img alt="Two-player co-op" src="https://img.shields.io/badge/PLAYERS-2-c8d1dc?style=flat-square&amp;labelColor=16191d">
   <img alt="GPLv3 with 7-Zip permission" src="https://img.shields.io/badge/LICENSE-GPLv3_%2B_7--Zip_permission-c8d1dc?style=flat-square&amp;labelColor=16191d">
@@ -21,7 +21,7 @@
   <a href="https://developer.undercoop.dev/status"><img alt="Undercoop Status" src="https://img.shields.io/badge/Undercoop-Status-292c33?style=for-the-badge"></a>
 </p>
 
-> **Open Beta · 6.13.29**
+> **Open Beta · 6.13.30**
 >
 > Undercoop is in active development. The systems below are implemented, but unusual race transitions, mod combinations and remote sessions can still expose bugs. Keep your own save copies, use the same Undercoop build on both PCs, and report problems with both players' logs. This repository contains the mod and launcher source, not the original game.
 
@@ -33,13 +33,15 @@
 
 **Explore the project:** [Co-op features](#co-op-features) · [Mod manager](#the-integrated-mod-manager) · [VirusTotal / antivirus](#virustotal-and-antivirus-alerts) · [Getting started](#getting-started) · [Network architecture](#network-architecture) · [Build from source](#build-from-source) · [Bug reports](#reporting-a-problem) · [Licensing](#licensing-and-branding)
 
-### Latest patch · 6.13.29
+### Latest patch · 6.13.30
 
 - Install the ASI and its INI, then start the game. Undercoop prepares missing startup files and its private mod workspace automatically.
 - Repair missing startup directories on later launches while retaining existing settings, mod selections, modpacks and careers.
 - Extract embedded archive and Binary support files when their features need them.
 
-See [the patch notes and test checklist](docs/PATCH_6.13.29.md).
+Compatible ASI loader builds are now accepted by their required virtual-file APIs, instead of being rejected for differing from one preview build's SHA-256. Missing or outdated loader features produce an actionable installation message.
+
+See [the patch notes and test checklist](docs/PATCH_6.13.30.md).
 
 ## Co-op features
 
@@ -162,22 +164,20 @@ If an antivirus flags your copy, include its detection name, the file hash and t
 ### Requirements
 
 1. A legally obtained Windows copy of **Need for Speed: Underground 2**, using the supported **v1.2 NTSC** executable. The current native integration targets `SPEED2.EXE` of **4,800,512 bytes**; other executable revisions are not automatically supported.
-2. The **tested compatible ASI loader** for this Undercoop build. The manager checks its virtual-path overload APIs and loader identity. An arbitrary `dinput8.dll` may not work. The loader is a separate prerequisite and is not included in this source repository; its upstream project is [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader).
+2. **Ultimate ASI Loader x86**, installed as `dinput8.dll` beside `SPEED2.EXE`, with the virtual-path APIs listed below. Undercoop checks the active loader's location and required features; it does not require one exact preview build. The loader is a separate prerequisite and is not included in this source repository; its upstream project is [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader).
 3. The same Undercoop version and matching effective game/mod files on both players' computers.
 4. A reachable IPv4 connection over the same PC, LAN or a trusted virtual LAN such as Radmin VPN. This build does not provide public matchmaking, a relay service or a dedicated server.
 
 This repository is a source distribution. Build the ASI using the instructions below, or use a matching ready-to-run release if one has been published under [Releases](https://github.com/Undercoop/Undercoop-NFSU2/releases). Game files, third-party mod packs and a working game installation must be supplied separately.
 
 <details>
-<summary><strong>Exact loader identity for this source snapshot</strong></summary>
+<summary><strong>ASI loader compatibility</strong></summary>
 
-The current manager validates `dinput8.dll` against this tested SHA-256:
+The active game-root `dinput8.dll` must provide `IsUltimateASILoader`, `AddVirtualPathForOverloadW` and `RemoveVirtualPathFromOverloadW`, using Ultimate ASI Loader's x86 calling conventions. Its identity marker must return true. Older loaders without these virtual-file features cannot provide the mod overlay; update the loader and restart if prompted. Other proxy filenames are not supported by this integration.
 
-```text
-ef7b1c3e3ae89dc6937182ad634ab89395610dac720f1f2c0da2391c1f19d149
-```
+The file remains locked while the setup is active. The launcher never replaces the loader or starts another loader executable. The compatibility check is implemented in [CoopManagerLoader.inl](src/CoopManagerLoader.inl).
 
-It also requires `IsUltimateASILoader`, `AddVirtualPathForOverloadW` and `RemoveVirtualPathFromOverloadW`. Use the loader supplied with the matching Undercoop distribution; the latest arbitrary upstream binary is not automatically interchangeable. The identity check is implemented in [CoopModManagerWin.h](src/CoopModManagerWin.h).
+Both teammates must still use matching effective files, including the loader. This patch removes the single-build launcher restriction; it does not disable the lobby's installed-file comparison.
 
 </details>
 
